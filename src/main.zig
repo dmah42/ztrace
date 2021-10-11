@@ -1,4 +1,5 @@
 const std = @import("std");
+const cam = @import("camera.zig");
 const hit = @import("hit.zig");
 const ppm = @import("ppm.zig");
 const ray = @import("ray.zig");
@@ -43,22 +44,12 @@ pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
 
     // image dimensions
-    const aspect = 16.0 / 9.0;
+
+    const camera = cam.Camera.init();
+
     const width = 400;
-    const height = @floatToInt(i32, width / aspect);
+    const height = @floatToInt(i32, width / cam.aspect_ratio);
 
-    // camera
-    const view_height = 2.0;
-    const view_width = aspect * view_height;
-    const focal = 1.0;
-
-    const origin = vec3.Vec3{};
-    const horiz = vec3.Vec3{ .x = view_width };
-    const vert = vec3.Vec3{ .y = view_height };
-
-    const lower_left = origin.sub(horiz.mult(0.5))
-        .sub(vert.mult(0.5))
-        .sub(vec3.Vec3{ .z = focal });
 
     // render
     var pixels: [width][height]rgb.RGB = undefined;
@@ -81,7 +72,7 @@ pub fn main() !void {
         while (i < width) {
             const u = @intToFloat(f32, i) / @intToFloat(f32, width - 1);
             const v = @intToFloat(f32, j) / @intToFloat(f32, height - 1);
-            const r = ray.Ray.init(origin, lower_left.add(horiz.mult(u)).add(vert.mult(v)).sub(origin));
+            const r = camera.createRay(u, v);
             const pixel_color = ray_color(r, &spheres);
 
             pixels[i][j] = pixel_color;
