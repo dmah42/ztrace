@@ -5,9 +5,9 @@ const vec3 = @import("vec3.zig");
 
 pub const Sphere = struct {
     center: vec3.Vec3,
-    radius: f32,
+    radius: f64,
 
-    pub fn intersect(self: Sphere, r: ray.Ray, t_min: f32, t_max: f32) ?hit.Hit {
+    pub fn intersect(self: Sphere, r: ray.Ray, t_min: f64, t_max: f64) ?hit.Hit {
         const oc = r.origin.sub(self.center);
         const a = r.direction.lenSqr();
         const half_b = oc.dot(r.direction);

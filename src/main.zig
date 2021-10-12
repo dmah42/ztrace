@@ -8,26 +8,48 @@ const sphere = @import("sphere.zig");
 const vec3 = @import("vec3.zig");
 
 pub const log_level: std.log.Level = .info;
-const samples = 50;
-const width = 400;
-const stdout = std.io.getStdOut().writer();
+const SAMPLES = 200;
+const WIDTH = 600;
+const MAX_DEPTH = 80;
 
-fn lerp(a: vec3.Vec3, b: vec3.Vec3, t: f32) vec3.Vec3 {
+fn lerp(a: vec3.Vec3, b: vec3.Vec3, t: f64) vec3.Vec3 {
     return a.mult(1.0 - t).add(b.mult(t));
 }
 
-fn ray_color(r: ray.Ray, spheres: []sphere.Sphere) vec3.Vec3 {
-    var nearest: f32 = 100.0;
+fn random_vec3(rand: *std.rand.Random) vec3.Vec3 {
+    return vec3.Vec3{
+        .x = rand.float(f64),
+        .y = rand.float(f64),
+        .z = rand.float(f64),
+    };
+}
+
+fn random_vec3_in_unit_sphere(rand: *std.rand.Random) vec3.Vec3 {
+    while (true) {
+        const v = random_vec3(rand);
+        if (v.lenSqr() <= 1.0) return v;
+    }
+}
+
+fn ray_color(rand: *std.rand.Random, r: ray.Ray, spheres: []sphere.Sphere, depth: u32) vec3.Vec3 {
+    if (depth >= MAX_DEPTH) {
+        return vec3.Vec3{};
+    }
+
+    const closest: f64 = 0.00001;
+    var farthest: f64 = 1000.0;
     var nearestHit: ?hit.Hit = null;
     for (spheres) |sph| {
-        const optHit = sph.intersect(r, 0.0, nearest);
+        const optHit = sph.intersect(r, closest, farthest);
         if (optHit) |h| {
             nearestHit = h;
-            nearest = h.t;
+            farthest = h.t;
         }
     }
     if (nearestHit) |h| {
-        return h.n.add(vec3.Vec3{ .x = 1, .y = 1, .z = 1 }).mult(0.5);
+        const target = h.n.add(random_vec3_in_unit_sphere(rand));
+        const newRay = ray.Ray{ .origin = h.p, .direction = vec3.unit(target) };
+        return ray_color(rand, newRay, spheres, depth + 1).mult(0.2); // multiplier is how much reflectance there is
     }
 
     const unit = vec3.unit(r.direction);
@@ -44,11 +66,11 @@ fn ray_color(r: ray.Ray, spheres: []sphere.Sphere) vec3.Vec3 {
 }
 
 pub fn main() !void {
-    const rand = &std.rand.DefaultPrng.init(0).random;
+    const rand = &std.rand.DefaultPrng.init(42).random;
 
     const camera = cam.Camera.init();
 
-    const height = @floatToInt(i32, width / cam.aspect_ratio);
+    const height = @floatToInt(i32, WIDTH / cam.aspect_ratio);
 
     var spheres = [_]sphere.Sphere{
         sphere.Sphere{
@@ -61,32 +83,33 @@ pub fn main() !void {
         },
     };
 
-    var pixels: [width][height]rgb.RGB = undefined;
+    var pixels: [WIDTH][height]rgb.RGB = undefined;
 
     var j: usize = 0;
     while (j < height) {
-        std.log.info("render scanlines remaining: {d}", .{j});
+        if (j % 10 == 0) {
+            std.log.info("render scanlines remaining: {d}", .{j});
+        }
         var i: usize = 0;
-        while (i < width) {
-
+        while (i < WIDTH) {
             var sample: usize = 0;
             var pixelColour = vec3.Vec3{};
-            while (sample < samples) {
-                const u = (@intToFloat(f32, i) + rand.float(f32)) / @intToFloat(f32, width - 1);
-                const v = (@intToFloat(f32, j) + rand.float(f32)) / @intToFloat(f32, height - 1);
+            while (sample < SAMPLES) {
+                const u = (@intToFloat(f64, i) + rand.float(f64)) / @intToFloat(f64, WIDTH - 1);
+                const v = (@intToFloat(f64, j) + rand.float(f64)) / @intToFloat(f64, height - 1);
                 const r = camera.createRay(u, v);
 
-                pixelColour = pixelColour.add(ray_color(r, &spheres));
+                pixelColour = pixelColour.add(ray_color(rand, r, &spheres, 0));
                 sample += 1;
             }
-            pixels[i][j] = rgb.RGB.fromVec3(pixelColour.mult(1.0 / @intToFloat(f32, samples)));
+            pixels[i][j] = rgb.RGB.fromVec3(pixelColour.mult(1.0 / @intToFloat(f64, SAMPLES)).pow(1.0 / 2.2));
 
             i += 1;
         }
         j += 1;
     }
 
-    try ppm.write(stdout, &pixels);
+    try ppm.write(std.io.getStdOut().writer(), &pixels);
 
     std.log.info("all your pixels are belong to us.", .{});
 }

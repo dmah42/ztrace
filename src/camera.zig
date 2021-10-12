@@ -1,7 +1,7 @@
 const ray = @import("ray.zig");
 const vec3 = @import("vec3.zig");
 
-pub const aspect_ratio: f32 = 16.0 / 9.0;
+pub const aspect_ratio: f64 = 16.0 / 9.0;
 
 pub const Camera = struct {
     origin: vec3.Vec3,
@@ -30,7 +30,7 @@ pub const Camera = struct {
         };
     }
 
-    pub fn createRay(self: Camera, u: f32, v: f32) ray.Ray {
+    pub fn createRay(self: Camera, u: f64, v: f64) ray.Ray {
         return ray.Ray{
             .origin = self.origin,
             .direction = self.lower_left.add(self.horiz.mult(u)).add(self.vert.mult(v)).sub(self.origin),
