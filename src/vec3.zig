@@ -17,12 +17,20 @@ pub const Vec3 = struct {
         return std.math.sqrt(self.lenSqr());
     }
 
-    pub fn mult(self: Vec3, f: f64) Vec3 {
-        return Vec3{
-            .x = self.x * f,
-            .y = self.y * f,
-            .z = self.z * f,
-        };
+    pub fn mult(self: Vec3, comptime T: type, v: T) Vec3 {
+        if (@TypeOf(v) == f64) {
+            return Vec3{
+                .x = self.x * v,
+                .y = self.y * v,
+                .z = self.z * v,
+            };
+        } else if (@TypeOf(v) == Vec3) {
+            return Vec3{
+                .x = self.x * v.x,
+                .y = self.y * v.y,
+                .z = self.z * v.z,
+            };
+        }
     }
 
     pub fn add(self: Vec3, o: Vec3) Vec3 {
@@ -55,5 +63,5 @@ pub fn cross(u: Vec3, v: Vec3) Vec3 {
 }
 
 pub fn unit(v: Vec3) Vec3 {
-    return v.mult(1.0 / v.len());
+    return v.mult(f64, 1.0 / v.len());
 }

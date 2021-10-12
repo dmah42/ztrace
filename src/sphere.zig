@@ -5,6 +5,7 @@ const vec3 = @import("vec3.zig");
 
 pub const Sphere = struct {
     center: vec3.Vec3,
+    albedo: vec3.Vec3,
     radius: f64,
 
     pub fn intersect(self: Sphere, r: ray.Ray, t_min: f64, t_max: f64) ?hit.Hit {
@@ -29,9 +30,10 @@ pub const Sphere = struct {
         }
 
         return hit.Hit{
+            .o = self,
             .t = root,
             .p = r.at(root),
-            .n = r.at(root).sub(self.center).mult(1.0 / self.radius),
+            .n = r.at(root).sub(self.center).mult(f64, 1.0 / self.radius),
         };
     }
 };

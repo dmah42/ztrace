@@ -13,7 +13,7 @@ const WIDTH = 600;
 const MAX_DEPTH = 80;
 
 fn lerp(a: vec3.Vec3, b: vec3.Vec3, t: f64) vec3.Vec3 {
-    return a.mult(1.0 - t).add(b.mult(t));
+    return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
 }
 
 fn random_vec3(rand: *std.rand.Random) vec3.Vec3 {
@@ -53,7 +53,7 @@ fn ray_color(rand: *std.rand.Random, r: ray.Ray, spheres: []sphere.Sphere, depth
     if (nearestHit) |h| {
         const target = h.n.add(random_unit_vec3(rand));
         const newRay = ray.Ray{ .origin = h.p, .direction = vec3.unit(target) };
-        return ray_color(rand, newRay, spheres, depth + 1).mult(0.2); // multiplier is how much reflectance there is
+        return ray_color(rand, newRay, spheres, depth + 1).mult(vec3.Vec3, h.o.albedo);
     }
 
     const unit = vec3.unit(r.direction);
@@ -72,6 +72,10 @@ fn ray_color(rand: *std.rand.Random, r: ray.Ray, spheres: []sphere.Sphere, depth
 pub fn main() !void {
     const rand = &std.rand.DefaultPrng.init(42).random;
 
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = &arena.allocator;
+
     const camera = cam.Camera.init();
 
     const height = @floatToInt(i32, WIDTH / cam.aspect_ratio);
@@ -79,10 +83,12 @@ pub fn main() !void {
     var spheres = [_]sphere.Sphere{
         sphere.Sphere{
             .center = vec3.Vec3{ .x = 0.3, .z = -1.0 },
+            .albedo = vec3.Vec3{ .x = 0.5, .y = 0.5, .z = 0.5 },
             .radius = 0.5,
         },
         sphere.Sphere{
             .center = vec3.Vec3{ .x = 0, .y = -100.5, .z = -1.0 },
+            .albedo = vec3.Vec3{ .x = 0.8, .y = 0.2, .z = 0.6 },
             .radius = 100.0,
         },
     };
@@ -106,7 +112,7 @@ pub fn main() !void {
                 pixelColour = pixelColour.add(ray_color(rand, r, &spheres, 0));
                 sample += 1;
             }
-            pixels[i][j] = rgb.RGB.fromVec3(pixelColour.mult(1.0 / @intToFloat(f64, SAMPLES)).pow(1.0 / 2.2));
+            pixels[i][j] = rgb.RGB.fromVec3(pixelColour.mult(f64, 1.0 / @intToFloat(f64, SAMPLES)).pow(1.0 / 2.2));
 
             i += 1;
         }

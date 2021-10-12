@@ -18,8 +18,8 @@ pub const Camera = struct {
         const horiz = vec3.Vec3{ .x = view_width };
         const vert = vec3.Vec3{ .y = view_height };
 
-        const lower_left = origin.sub(horiz.mult(0.5))
-            .sub(vert.mult(0.5))
+        const lower_left = origin.sub(horiz.mult(f64, 0.5))
+            .sub(vert.mult(f64, 0.5))
             .sub(vec3.Vec3{ .z = focal });
 
         return Camera{
@@ -33,7 +33,7 @@ pub const Camera = struct {
     pub fn createRay(self: Camera, u: f64, v: f64) ray.Ray {
         return ray.Ray{
             .origin = self.origin,
-            .direction = self.lower_left.add(self.horiz.mult(u)).add(self.vert.mult(v)).sub(self.origin),
+            .direction = self.lower_left.add(self.horiz.mult(f64, u)).add(self.vert.mult(f64, v)).sub(self.origin),
         };
     }
 };

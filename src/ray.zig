@@ -9,6 +9,6 @@ pub const Ray = struct {
     } 
 
     pub fn at(self: Ray, t: f64) vec3.Vec3 {
-        return self.origin.add(self.direction.mult(t));
+        return self.origin.add(self.direction.mult(f64, t));
     }
 };
