@@ -22,7 +22,7 @@ pub const Camera = struct {
             .sub(vert.mult(0.5))
             .sub(vec3.Vec3{ .z = focal });
 
-        return Camera {
+        return Camera{
             .origin = origin,
             .lower_left = lower_left,
             .horiz = horiz,

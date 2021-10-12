@@ -31,6 +31,10 @@ fn random_vec3_in_unit_sphere(rand: *std.rand.Random) vec3.Vec3 {
     }
 }
 
+fn random_unit_vec3(rand: *std.rand.Random) vec3.Vec3 {
+    return vec3.unit(random_vec3_in_unit_sphere(rand));
+}
+
 fn ray_color(rand: *std.rand.Random, r: ray.Ray, spheres: []sphere.Sphere, depth: u32) vec3.Vec3 {
     if (depth >= MAX_DEPTH) {
         return vec3.Vec3{};
@@ -47,7 +51,7 @@ fn ray_color(rand: *std.rand.Random, r: ray.Ray, spheres: []sphere.Sphere, depth
         }
     }
     if (nearestHit) |h| {
-        const target = h.n.add(random_vec3_in_unit_sphere(rand));
+        const target = h.n.add(random_unit_vec3(rand));
         const newRay = ray.Ray{ .origin = h.p, .direction = vec3.unit(target) };
         return ray_color(rand, newRay, spheres, depth + 1).mult(0.2); // multiplier is how much reflectance there is
     }
@@ -88,7 +92,7 @@ pub fn main() !void {
     var j: usize = 0;
     while (j < height) {
         if (j % 10 == 0) {
-            std.log.info("render scanlines remaining: {d}", .{j});
+            std.log.info("rendering scanline {d} / {d}", .{j, height});
         }
         var i: usize = 0;
         while (i < WIDTH) {
