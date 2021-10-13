@@ -8,9 +8,13 @@ const sphere = @import("sphere.zig");
 const vec3 = @import("vec3.zig");
 
 pub const log_level: std.log.Level = .info;
-const SAMPLES = 100;
-const WIDTH = 800;
+const SAMPLES = 1000;
+const WIDTH = 1080;
 const MAX_DEPTH = 10;
+
+// const SAMPLES = 10;
+// const WIDTH = 400;
+// const MAX_DEPTH = 5;
 
 fn lerp(a: vec3.Vec3, b: vec3.Vec3, t: f64) vec3.Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
@@ -93,6 +97,21 @@ pub fn main() !void {
                         .x = 1.0,
                         .y = 1.0,
                         .z = 1.0,
+                    },
+                },
+            },
+        },
+
+        sphere.Sphere{
+            .center = .{ .x = -0.15, .y = -0.4, .z = -0.7 },
+            .radius = 0.1,
+            .materials = .{
+                .mirrorFac = 1.0,
+                .mirror = .{
+                    .albedo = .{
+                        .x = 0.7,
+                        .y = 0.0,
+                        .z = 0.0,
                     },
                 },
             },

@@ -13,6 +13,9 @@ pub fn write(writer: std.fs.File.Writer, pixels: anytype) !void {
 
     var j:i32 = height - 1;
     while(j >= 0) {
+        if (@mod(j, 10) == 0) {
+            std.log.info("scanlines remaining {d} / {d}", .{ j, height });
+        }
         var i:usize = 0;
         while (i < width) {
             const pixel = pixels[i][@intCast(usize, j)];
