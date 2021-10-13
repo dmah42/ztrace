@@ -5,7 +5,7 @@ pub const Ray = struct {
     direction: vec3.Vec3,
 
     pub fn init(origin: vec3.Vec3, direction: vec3.Vec3) Ray {
-        return Ray {.origin = origin, .direction = direction, };
+        return .{.origin = origin, .direction = direction, };
     } 
 
     pub fn at(self: Ray, t: f64) vec3.Vec3 {

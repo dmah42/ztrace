@@ -1,12 +1,13 @@
 const std = @import("std");
 const hit = @import("hit.zig");
+const mat = @import("materials.zig");
 const ray = @import("ray.zig");
 const vec3 = @import("vec3.zig");
 
 pub const Sphere = struct {
     center: vec3.Vec3,
-    albedo: vec3.Vec3,
     radius: f64,
+    materials: mat.Materials,
 
     pub fn intersect(self: Sphere, r: ray.Ray, t_min: f64, t_max: f64) ?hit.Hit {
         const oc = r.origin.sub(self.center);

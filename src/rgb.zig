@@ -9,6 +9,6 @@ pub const RGB = struct {
         const ir = @floatToInt(u8, 255.0 * v.x);
         const ig = @floatToInt(u8, 255.0 * v.y);
         const ib = @floatToInt(u8, 255.0 * v.z);
-        return RGB{.r = ir, .g = ig, .b = ib};
+        return .{.r = ir, .g = ig, .b = ib};
     }
 };

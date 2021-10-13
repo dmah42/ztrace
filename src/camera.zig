@@ -14,13 +14,13 @@ pub const Camera = struct {
         const view_width = aspect_ratio * view_height;
         const focal = 1.0;
 
-        const origin = vec3.Vec3{};
-        const horiz = vec3.Vec3{ .x = view_width };
-        const vert = vec3.Vec3{ .y = view_height };
+        const origin: vec3.Vec3 = .{};
+        const horiz: vec3.Vec3 = .{ .x = view_width };
+        const vert: vec3.Vec3 = .{ .y = view_height };
 
         const lower_left = origin.sub(horiz.mult(f64, 0.5))
             .sub(vert.mult(f64, 0.5))
-            .sub(vec3.Vec3{ .z = focal });
+            .sub(.{ .z = focal });
 
         return Camera{
             .origin = origin,
