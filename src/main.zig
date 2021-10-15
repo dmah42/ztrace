@@ -13,7 +13,7 @@ const Vec3 = vec3.Vec3;
 
 pub const log_level: std.log.Level = .info;
 
-const config = cfg.hi_res();
+const config = cfg.test_render();
 
 fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
@@ -53,7 +53,7 @@ pub fn main() !void {
 
     const rand = &std.rand.DefaultPrng.init(42).random;
 
-    const camera = Camera.init();
+    const camera = Camera.init(90.0);
 
     const height = @floatToInt(usize, @intToFloat(f64, config.width) / cam.aspect_ratio);
 

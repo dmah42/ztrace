@@ -1,3 +1,4 @@
+const math = @import("std").math;
 const ray = @import("ray.zig");
 const Vec3 = @import("vec3.zig").Vec3;
 
@@ -9,9 +10,12 @@ pub const Camera = struct {
     horiz: Vec3,
     vert: Vec3,
 
-    pub fn init() Camera {
-        const view_height = 2.0;
+    pub fn init(vfov: f64) Camera {
+        const theta = vfov * math.pi / 180.0;
+        const h = math.tan(theta / 2.0);
+        const view_height = 2.0 * h;
         const view_width = aspect_ratio * view_height;
+
         const focal = 1.0;
 
         const origin = Vec3.zero();
