@@ -43,8 +43,7 @@ pub const Dielectric = struct {
     albedo: Vec3 = Vec3.init(1.0, 1.0, 1.0),
     index: f64 = 1.0,
 
-    fn refract(uv: Vec3, n: Vec3, etai_over_etat: f64) Vec3 {
-        const cos_theta = math.min(uv.negate().dot(n), 1.0);
+    fn refract(uv: Vec3, n: Vec3, cos_theta: f64, etai_over_etat: f64) Vec3 {
         const r_out_perp = uv.add(n.mult(f64, cos_theta)).mult(f64, etai_over_etat);
         const r_out_para = n.mult(f64, -math.sqrt(math.absFloat(1.0 - r_out_perp.lenSqr())));
         return r_out_perp.add(r_out_para);
@@ -52,10 +51,19 @@ pub const Dielectric = struct {
 
     pub fn scatter(self: Dielectric, _rand: *rand.Random, r: Ray, h: Hit) ?Scattered {
         const ratio: f64 = if (h.ff()) 1.0 / self.index else self.index;
+        
+        const uv = vec3.unit(r.direction);
+
+        const cos_theta = math.min(uv.negate().dot(h.n()), 1.0);
+        const sin_theta = math.sqrt(1.0 - cos_theta * cos_theta);
+
+        const can_refract = ratio * sin_theta < 1.0;
+
+        const direction = if (can_refract) refract(uv, h.n(), cos_theta, ratio) else uv.reflect(h.n());
 
         return Scattered{ .attenuation = self.albedo, .scatteredRay = Ray{
             .origin = h.p,
-            .direction = refract(r.direction, h.n(), ratio),
+            .direction = direction,
         } };
     }
 };

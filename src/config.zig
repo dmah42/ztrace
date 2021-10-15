@@ -6,7 +6,7 @@ const Config = struct {
 
 pub fn hi_res() Config {
     return .{
-        .samples = 1000,
+        .samples = 500,
         .width = 1080,
         .max_depth = 10,
     };
