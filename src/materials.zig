@@ -49,17 +49,24 @@ pub const Dielectric = struct {
         return r_out_perp.add(r_out_para);
     }
 
+    // Use Schlick's approximation for reflectance.
+    fn reflectance(cos_theta: f64, ratio: f64) f64 {
+        var r0 = (1 - ratio) / (1 + ratio);
+        r0 *= r0;
+        return r0 + (1 - r0) * math.pow(f64, 1 - cos_theta, 5);
+    }
+
     pub fn scatter(self: Dielectric, _rand: *rand.Random, r: Ray, h: Hit) ?Scattered {
         const ratio: f64 = if (h.ff()) 1.0 / self.index else self.index;
-        
+
         const uv = vec3.unit(r.direction);
 
         const cos_theta = math.min(uv.negate().dot(h.n()), 1.0);
         const sin_theta = math.sqrt(1.0 - cos_theta * cos_theta);
 
-        const can_refract = ratio * sin_theta < 1.0;
+        const cannot_refract = ratio * sin_theta > 1.0;
 
-        const direction = if (can_refract) refract(uv, h.n(), cos_theta, ratio) else uv.reflect(h.n());
+        const direction = if (cannot_refract or reflectance(cos_theta, ratio) > _rand.float(f64)) uv.reflect(h.n()) else refract(uv, h.n(), cos_theta, ratio);
 
         return Scattered{ .attenuation = self.albedo, .scatteredRay = Ray{
             .origin = h.p,
