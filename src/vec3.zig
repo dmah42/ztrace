@@ -87,9 +87,9 @@ pub const Vec3 = struct {
 
 pub fn cross(u: Vec3, v: Vec3) Vec3 {
     return .{ .v = .{
-        u[1] * v[2] - u[2] * v[1],
-        u[2] * v[0] - u[0] * v[2],
-        u[0] * v[1] - u[1] * v[0],
+        u.y() * v.z() - u.z() * v.y(),
+        u.z() * v.x() - u.x() * v.z(),
+        u.x() * v.y() - u.y() * v.x(),
     } };
 }
 

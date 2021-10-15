@@ -13,7 +13,7 @@ const Vec3 = vec3.Vec3;
 
 pub const log_level: std.log.Level = .info;
 
-const config = cfg.test_render();
+const config = cfg.low_res();
 
 fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
@@ -50,10 +50,9 @@ fn ray_color(rand: *std.rand.Random, r: Ray, spheres: []Sphere, depth: u32) Vec3
 }
 
 pub fn main() !void {
-
     const rand = &std.rand.DefaultPrng.init(42).random;
 
-    const camera = Camera.init(90.0);
+    const camera = Camera.init(Vec3.init(-1, 1, 0.5), Vec3.init(0, 0, -1), Vec3.init(0, 1, 0), 45.0);
 
     const height = @floatToInt(usize, @intToFloat(f64, config.width) / cam.aspect_ratio);
 
@@ -107,23 +106,16 @@ pub fn main() !void {
         },
 
         // glass
-        Sphere{
-            .center = Vec3.init(-0.15, -0.1, -0.55),
-            .radius = 0.1,
-            .materials = .{
-                .dielectricFac = 1.0,
-                .dielectric = .{
-                    .index = 1.5,
-                }
-            }
-        },
+        Sphere{ .center = Vec3.init(-0.15, -0.1, -0.55), .radius = 0.1, .materials = .{ .dielectricFac = 1.0, .dielectric = .{
+            .index = 1.5,
+        } } },
 
         // ground
         Sphere{
             .center = Vec3.init(0.0, -100.5, -1.0),
             .radius = 100.0,
             .materials = .{ .lambFac = 1.0, .lamb = .{
-                .albedo = Vec3.init(0.8, 0.2, 0.6),
+                .albedo = Vec3.init(0.6, 0.8, 0.2),
             } },
         },
     };
