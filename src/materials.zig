@@ -1,4 +1,5 @@
 const std = @import("std");
+const rand = std.rand;
 
 const hit = @import("hit.zig");
 const ray = @import("ray.zig");
@@ -9,8 +10,8 @@ const Vec3 = vec3.Vec3;
 pub const Lambertian = struct {
     albedo: Vec3 = Vec3.zero(),
 
-    pub fn scatter(self: Lambertian, rand: *std.rand.Random, r: ray.Ray, h: hit.Hit) ?s.Scattered {
-        var target = h.n.add(vec3.random_unit(rand));
+    pub fn scatter(self: Lambertian, _rand: *rand.Random, r: ray.Ray, h: hit.Hit) ?s.Scattered {
+        var target = h.n.add(vec3.random_unit(_rand));
         if (target.near_zero()) {
             target = h.n;
         }
@@ -23,13 +24,17 @@ pub const Lambertian = struct {
 
 pub const Mirror = struct {
     albedo: Vec3 = Vec3.zero(),
+    fuzz: f64 = 0.0,
 
-    pub fn scatter(self: Mirror, rand: *std.rand.Random, r: ray.Ray, h: hit.Hit) ?s.Scattered {
+    pub fn scatter(self: Mirror, _rand: *rand.Random, r: ray.Ray, h: hit.Hit) ?s.Scattered {
         const reflected = vec3.unit(r.direction).reflect(h.n);
         if (reflected.dot(h.n) > 0) {
             return s.Scattered{
                 .attenuation = self.albedo,
-                .scatteredRay = ray.Ray{.origin = h.p, .direction = reflected},
+                .scatteredRay = ray.Ray{
+                    .origin = h.p,
+                    .direction = reflected.add(vec3.random_in_unit_sphere(_rand).mult(f64, self.fuzz))
+                },
             };
         }
         return null;
@@ -43,7 +48,7 @@ pub const Materials = struct {
     mirrorFac: f32 = 0.0,
     mirror: Mirror = .{},
 
-    pub fn scatter(self: Materials, rand: *std.rand.Random, r: ray.Ray, h: hit.Hit) !?s.Scattered {
+    pub fn scatter(self: Materials, _rand: *rand.Random, r: ray.Ray, h: hit.Hit) !?s.Scattered {
         const total = self.lambFac + self.mirrorFac;
 
         if (total > 1.0) {
@@ -54,10 +59,10 @@ pub const Materials = struct {
             return error.Underflow;
         }
 
-        const res = rand.float(f64) * total;
+        const res = _rand.float(f64) * total;
         if (res < self.lambFac) {
-            return self.lamb.scatter(rand, r, h);
+            return self.lamb.scatter(_rand, r, h);
         }
-        return self.mirror.scatter(rand, r, h);
+        return self.mirror.scatter(_rand, r, h);
     }
 };

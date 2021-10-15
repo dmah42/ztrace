@@ -17,8 +17,13 @@ pub const log_level: std.log.Level = .info;
 // const MAX_DEPTH = 10;
 
 // test render
-const SAMPLES = 10;
-const WIDTH = 200;
+// const SAMPLES = 10;
+// const WIDTH = 400;
+// const MAX_DEPTH = 5;
+
+// low res
+const SAMPLES = 100;
+const WIDTH = 640;
 const MAX_DEPTH = 5;
 
 fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
@@ -107,6 +112,7 @@ pub fn main() !void {
                         0.0,
                         0.0,
                     ),
+                    .fuzz = 0.5,
                 },
             },
         },
