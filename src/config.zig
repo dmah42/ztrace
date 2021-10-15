@@ -22,8 +22,8 @@ pub fn test_render() Config {
 
 pub fn low_res() Config {
     return .{
-        .samples = 100,
-        .width = 1080,
+        .samples = 50,
+        .width = 960,
         .max_depth = 5,
     };
 }

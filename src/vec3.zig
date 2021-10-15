@@ -117,3 +117,10 @@ pub fn random_in_unit_sphere(_rand: *rand.Random) Vec3 {
 pub fn random_unit(_rand: *rand.Random) Vec3 {
     return unit(random_in_unit_sphere(_rand));
 }
+
+pub fn random_in_unit_disc(_rand: *rand.Random) Vec3 {
+    while (true) {
+        const v = Vec3.init(_rand.float(f64) * 2.0 - 1.0, _rand.float(f64) * 2.0 - 1.0, 0.0);
+        if (v.lenSqr() < 1.0) return v;
+    }
+}

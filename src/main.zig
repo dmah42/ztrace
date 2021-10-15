@@ -13,7 +13,7 @@ const Vec3 = vec3.Vec3;
 
 pub const log_level: std.log.Level = .info;
 
-const config = cfg.low_res();
+const config = cfg.hi_res();
 
 fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
@@ -52,7 +52,7 @@ fn ray_color(rand: *std.rand.Random, r: Ray, spheres: []Sphere, depth: u32) Vec3
 pub fn main() !void {
     const rand = &std.rand.DefaultPrng.init(42).random;
 
-    const camera = Camera.init(Vec3.init(-1, 1, 0.5), Vec3.init(0, 0, -1), Vec3.init(0, 1, 0), 45.0);
+    const camera = Camera.aperture(Vec3.init(-1, 1, 0.8), Vec3.init(0, 0, -1), 45.0, 0.2);
 
     const height = @floatToInt(usize, @intToFloat(f64, config.width) / cam.aspect_ratio);
 
@@ -134,7 +134,7 @@ pub fn main() !void {
             while (sample < config.samples) {
                 const u = (@intToFloat(f64, i) + rand.float(f64)) / @intToFloat(f64, config.width - 1);
                 const v = (@intToFloat(f64, j) + rand.float(f64)) / @intToFloat(f64, height - 1);
-                const r = camera.createRay(u, v);
+                const r = camera.createRay(rand, u, v);
 
                 pixelColour = pixelColour.add(ray_color(rand, r, &spheres, 0));
                 sample += 1;
