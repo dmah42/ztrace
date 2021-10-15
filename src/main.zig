@@ -58,9 +58,10 @@ pub fn main() !void {
     const height = @floatToInt(usize, @intToFloat(f64, config.width) / cam.aspect_ratio);
 
     var spheres = [_]Sphere{
+        // grey lambert
         Sphere{
-            .center = Vec3.init(0.3, 0.0, -1.0),
-            .radius = 0.5,
+            .center = Vec3.init(0.3, -0.05, -1.0),
+            .radius = 0.4,
             .materials = .{ .lambFac = 1.0, .lamb = .{
                 .albedo = Vec3.init(
                     0.5,
@@ -70,6 +71,7 @@ pub fn main() !void {
             } },
         },
 
+        // aqua mirror
         Sphere{
             .center = Vec3.init(-0.6, -0.2, -1.2),
             .radius = 0.3,
@@ -87,8 +89,9 @@ pub fn main() !void {
             },
         },
 
+        // red metal
         Sphere{
-            .center = Vec3.init(-0.15, -0.4, -0.7),
+            .center = Vec3.init(-0.15, -0.4, -0.95),
             .radius = 0.1,
             .materials = .{
                 .mirrorFac = 1.0,
@@ -101,6 +104,18 @@ pub fn main() !void {
                     .fuzz = 0.5,
                 },
             },
+        },
+
+        // glass
+        Sphere{
+            .center = Vec3.init(-0.15, -0.1, -0.55),
+            .radius = 0.1,
+            .materials = .{
+                .dielectricFac = 1.0,
+                .dielectric = .{
+                    .index = 1.5,
+                }
+            }
         },
 
         // ground

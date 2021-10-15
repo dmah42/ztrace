@@ -30,11 +30,12 @@ pub const Sphere = struct {
                 return null;
         }
 
-        return hit.Hit{
+        var h = hit.Hit{
             .o = self,
             .t = root,
             .p = r.at(root),
-            .n = r.at(root).sub(self.center).mult(f64, 1.0 / self.radius),
         };
+        h.set_normal(r, r.at(root).sub(self.center).mult(f64, 1.0 / self.radius));
+        return h;
     }
 };

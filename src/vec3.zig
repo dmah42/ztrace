@@ -29,6 +29,10 @@ pub const Vec3 = struct {
         return .{ .v = .{ 0.0, 0.0, 0.0 } };
     }
 
+    pub fn negate(self: Vec3) Vec3 {
+        return .{ .v = .{ -self.v[0], -self.v[1], -self.v[2] } };
+    }
+
     pub fn dot(self: Vec3, other: Vec3) f64 {
         const vv = self.v * other.v;
         return vv[0] + vv[1] + vv[2];

@@ -1,23 +1,24 @@
 const std = @import("std");
+const math = std.math;
 const rand = std.rand;
 
-const hit = @import("hit.zig");
-const ray = @import("ray.zig");
-const s = @import("scattered.zig");
+const Hit = @import("hit.zig").Hit;
+const Ray = @import("ray.zig").Ray;
+const Scattered = @import("scattered.zig").Scattered;
 const vec3 = @import("vec3.zig");
 const Vec3 = vec3.Vec3;
 
 pub const Lambertian = struct {
     albedo: Vec3 = Vec3.zero(),
 
-    pub fn scatter(self: Lambertian, _rand: *rand.Random, r: ray.Ray, h: hit.Hit) ?s.Scattered {
-        var target = h.n.add(vec3.random_unit(_rand));
+    pub fn scatter(self: Lambertian, _rand: *rand.Random, r: Ray, h: Hit) ?Scattered {
+        var target = h.n().add(vec3.random_unit(_rand));
         if (target.near_zero()) {
-            target = h.n;
+            target = h.n();
         }
-        return s.Scattered{
+        return Scattered{
             .attenuation = self.albedo,
-            .scatteredRay = ray.Ray{ .origin = h.p, .direction = vec3.unit(target) },
+            .scatteredRay = Ray{ .origin = h.p, .direction = vec3.unit(target) },
         };
     }
 };
@@ -26,18 +27,36 @@ pub const Mirror = struct {
     albedo: Vec3 = Vec3.zero(),
     fuzz: f64 = 0.0,
 
-    pub fn scatter(self: Mirror, _rand: *rand.Random, r: ray.Ray, h: hit.Hit) ?s.Scattered {
-        const reflected = vec3.unit(r.direction).reflect(h.n);
-        if (reflected.dot(h.n) > 0) {
-            return s.Scattered{
+    pub fn scatter(self: Mirror, _rand: *rand.Random, r: Ray, h: Hit) ?Scattered {
+        const reflected = vec3.unit(r.direction).reflect(h.n());
+        if (reflected.dot(h.n()) > 0) {
+            return Scattered{
                 .attenuation = self.albedo,
-                .scatteredRay = ray.Ray{
-                    .origin = h.p,
-                    .direction = reflected.add(vec3.random_in_unit_sphere(_rand).mult(f64, self.fuzz))
-                },
+                .scatteredRay = Ray{ .origin = h.p, .direction = reflected.add(vec3.random_in_unit_sphere(_rand).mult(f64, self.fuzz)) },
             };
         }
         return null;
+    }
+};
+
+pub const Dielectric = struct {
+    albedo: Vec3 = Vec3.init(1.0, 1.0, 1.0),
+    index: f64 = 1.0,
+
+    fn refract(uv: Vec3, n: Vec3, etai_over_etat: f64) Vec3 {
+        const cos_theta = math.min(uv.negate().dot(n), 1.0);
+        const r_out_perp = uv.add(n.mult(f64, cos_theta)).mult(f64, etai_over_etat);
+        const r_out_para = n.mult(f64, -math.sqrt(math.absFloat(1.0 - r_out_perp.lenSqr())));
+        return r_out_perp.add(r_out_para);
+    }
+
+    pub fn scatter(self: Dielectric, _rand: *rand.Random, r: Ray, h: Hit) ?Scattered {
+        const ratio: f64 = if (h.ff()) 1.0 / self.index else self.index;
+
+        return Scattered{ .attenuation = self.albedo, .scatteredRay = Ray{
+            .origin = h.p,
+            .direction = refract(r.direction, h.n(), ratio),
+        } };
     }
 };
 
@@ -48,8 +67,11 @@ pub const Materials = struct {
     mirrorFac: f32 = 0.0,
     mirror: Mirror = .{},
 
-    pub fn scatter(self: Materials, _rand: *rand.Random, r: ray.Ray, h: hit.Hit) !?s.Scattered {
-        const total = self.lambFac + self.mirrorFac;
+    dielectricFac: f32 = 0.0,
+    dielectric: Dielectric = .{},
+
+    pub fn scatter(self: Materials, _rand: *rand.Random, r: Ray, h: Hit) !?Scattered {
+        const total = self.lambFac + self.mirrorFac + self.dielectricFac;
 
         if (total > 1.0) {
             return error.Overflow;
@@ -62,7 +84,9 @@ pub const Materials = struct {
         const res = _rand.float(f64) * total;
         if (res < self.lambFac) {
             return self.lamb.scatter(_rand, r, h);
+        } else if (res < self.mirrorFac) {
+            return self.mirror.scatter(_rand, r, h);
         }
-        return self.mirror.scatter(_rand, r, h);
+        return self.dielectric.scatter(_rand, r, h);
     }
 };
