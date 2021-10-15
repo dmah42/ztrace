@@ -4,9 +4,10 @@ const hit = @import("hit.zig");
 const ray = @import("ray.zig");
 const s = @import("scattered.zig");
 const vec3 = @import("vec3.zig");
+const Vec3 = vec3.Vec3;
 
 pub const Lambertian = struct {
-    albedo: vec3.Vec3 = .{},
+    albedo: Vec3 = Vec3.zero(),
 
     pub fn scatter(self: Lambertian, rand: *std.rand.Random, r: ray.Ray, h: hit.Hit) ?s.Scattered {
         var target = h.n.add(vec3.random_unit(rand));
@@ -21,7 +22,7 @@ pub const Lambertian = struct {
 };
 
 pub const Mirror = struct {
-    albedo: vec3.Vec3 = .{},
+    albedo: Vec3 = Vec3.zero(),
 
     pub fn scatter(self: Mirror, rand: *std.rand.Random, r: ray.Ray, h: hit.Hit) ?s.Scattered {
         const reflected = vec3.unit(r.direction).reflect(h.n);
