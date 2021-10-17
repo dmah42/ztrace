@@ -1,6 +1,7 @@
 const std = @import("std");
 const cam = @import("camera.zig");
 const cfg = @import("config.zig");
+const object = @import("object.zig");
 const ppm = @import("ppm.zig");
 const rgb = @import("rgb.zig");
 const vec3 = @import("vec3.zig");
@@ -11,6 +12,7 @@ const Ray = @import("ray.zig").Ray;
 const Sphere = @import("sphere.zig").Sphere;
 
 const Camera = cam.Camera;
+const Object = object.Object;
 const Vec3 = vec3.Vec3;
 
 pub const log_level: std.log.Level = .info;
@@ -44,46 +46,46 @@ fn ray_color(rand: *std.rand.Random, r: Ray, world: *BVHNode, background: Vec3, 
 
 const Scene = struct {
     camera: Camera,
-    spheres: std.ArrayList(Sphere),
+    objects: std.ArrayList(Object),
     background: Vec3,
 };
 
 fn createSimpleLight(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
-    var spheres = std.ArrayList(Sphere).init(alloc);
+    var objects = std.ArrayList(Object).init(alloc);
 
-    try spheres.append(Sphere{
+    try objects.append(object.asSphere(Sphere{
         .center = Vec3.init(0, -1000, 0),
         .radius = 1000,
         .materials = .{ .lambFac = 1.0, .lamb = .{
             .albedo = Vec3.init(0.5, 0.5, 0.5),
         } },
-    });
+    }));
 
-    try spheres.append(Sphere{
+    try objects.append(object.asSphere(Sphere{
         .center = Vec3.init(0, 2, 0),
         .radius = 2,
         .materials = .{ .lambFac = 1.0, .lamb = .{
             .albedo = Vec3.init(0.8, 0.2, 0.6),
         } },
-    });
+    }));
 
-    try spheres.append(Sphere{
+    try objects.append(object.asSphere(Sphere{
         .center = Vec3.init(-2, 4, 2),
         .radius = 1.2,
         .emittance = Vec3.init(1, 1, 1),
         .materials = .{},
-    });
+    }));
 
-    try spheres.append(Sphere{
+    try objects.append(object.asSphere(Sphere{
         .center = Vec3.init(2, 0.5, 3),
         .radius = 0.5,
         .emittance = Vec3.init(1, 1, 1),
         .materials = .{},
-    });
+    }));
 
     return Scene{
         .camera = Camera.basic(Vec3.init(0, 3, 10), Vec3.init(0, 2, 0), 40.0),
-        .spheres = spheres,
+        .objects = objects,
         .background = Vec3.zero(),
     };
 }
@@ -186,12 +188,12 @@ pub fn main() !void {
 
     std.log.info("creating world", .{});
     const scene = try createSimpleLight(allocator, rand);
-    defer scene.spheres.deinit();
+    defer scene.objects.deinit();
 
-    std.log.info("{d} spheres in the world", .{scene.spheres.items.len});
+    std.log.info("{d} objects in the world", .{scene.objects.items.len});
 
     std.log.info("slicing up the world", .{});
-    const world = try BVHNode.init(allocator, scene.spheres.items, rand);
+    const world = try BVHNode.init(allocator, scene.objects.items, rand);
     std.log.info("ready to throw some pixels!", .{});
 
     var pixels: [config.width][height]rgb.RGB = undefined;
