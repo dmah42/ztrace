@@ -8,8 +8,6 @@ const Vec3 = @import("vec3.zig").Vec3;
 pub const Sphere = struct {
     center: Vec3,
     radius: f64,
-    materials: mat.Materials,
-    emittance: Vec3 = Vec3.zero(),
 
     pub fn bound(self: Sphere) AABB {
         return .{
@@ -40,7 +38,6 @@ pub const Sphere = struct {
         }
 
         var h = Hit{
-            .o = self,
             .t = root,
             .p = r.at(root),
         };

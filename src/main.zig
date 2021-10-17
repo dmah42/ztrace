@@ -10,6 +10,7 @@ const BVHNode = @import("bvhnode.zig").BVHNode;
 const Hit = @import("hit.zig").Hit;
 const Ray = @import("ray.zig").Ray;
 const Sphere = @import("sphere.zig").Sphere;
+const XYRect = @import("xyrect.zig").XYRect;
 
 const Camera = cam.Camera;
 const Object = object.Object;
@@ -56,37 +57,48 @@ fn createSimpleLight(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
     try objects.append(object.asSphere(Sphere{
         .center = Vec3.init(0, -1000, 0),
         .radius = 1000,
-        .materials = .{ .lambFac = 1.0, .lamb = .{
+    }, .{
+        .lambFac = 1.0,
+        .lamb = .{
             .albedo = Vec3.init(0.5, 0.5, 0.5),
-        } },
-    }));
+        },
+    }, Vec3.zero()));
 
     try objects.append(object.asSphere(Sphere{
         .center = Vec3.init(0, 2, 0),
         .radius = 2,
-        .materials = .{ .lambFac = 1.0, .lamb = .{
+    }, .{
+        .lambFac = 1.0,
+        .lamb = .{
             .albedo = Vec3.init(0.8, 0.2, 0.6),
-        } },
-    }));
+        },
+    }, Vec3.zero()));
 
-    try objects.append(object.asSphere(Sphere{
-        .center = Vec3.init(-2, 4, 2),
-        .radius = 1.2,
-        .emittance = Vec3.init(1, 1, 1),
-        .materials = .{},
-    }));
+    try objects.append(object.asXYRect(
+        XYRect{
+            .x0 = -3,
+            .x1 = -1,
+            .y0 = 2,
+            .y1 = 4,
+            .k = 5,
+        },
+        .{},
+        Vec3.init(1, 1, 1),
+    ));
 
-    try objects.append(object.asSphere(Sphere{
-        .center = Vec3.init(2, 0.5, 3),
-        .radius = 0.5,
-        .emittance = Vec3.init(1, 1, 1),
-        .materials = .{},
-    }));
+    try objects.append(object.asSphere(
+        Sphere{
+            .center = Vec3.init(2, 0.5, 3),
+            .radius = 0.5,
+        },
+        .{},
+        Vec3.init(1, 1, 1),
+    ));
 
     return Scene{
-        .camera = Camera.basic(Vec3.init(0, 3, 10), Vec3.init(0, 2, 0), 40.0),
+        .camera = Camera.basic(Vec3.init(8, 3, 10), Vec3.init(0, 2, 0), 40.0),
         .objects = objects,
-        .background = Vec3.zero(),
+        .background = Vec3.init(0.0, 0.2, 0.4),
     };
 }
 
