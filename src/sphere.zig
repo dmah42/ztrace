@@ -9,6 +9,7 @@ pub const Sphere = struct {
     center: Vec3,
     radius: f64,
     materials: mat.Materials,
+    emittance: Vec3 = Vec3.zero(),
 
     pub fn bound(self: Sphere) AABB {
         return .{

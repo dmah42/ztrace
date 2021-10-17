@@ -88,6 +88,10 @@ pub const Materials = struct {
     pub fn scatter(self: Materials, _rand: *rand.Random, r: Ray, h: Hit) !?Scattered {
         const total = self.lambFac + self.mirrorFac + self.dielectricFac;
 
+        if (total == 0.0) {
+            return null;
+        }
+
         if (total > 1.0) {
             return error.Overflow;
         }
