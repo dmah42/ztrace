@@ -72,6 +72,14 @@ pub const Vec3 = struct {
         };
     }
 
+    pub fn inverse(self: Vec3) Vec3 {
+        return .{ .v = .{
+            1.0 / self.v[0],
+            1.0 / self.v[1],
+            1.0 / self.v[2],
+        } };
+    }
+
     pub fn near_zero(self: Vec3) bool {
         const EPSILON = 1e-8;
         return (math.fabs(self.v[0]) < EPSILON) and

@@ -16,7 +16,7 @@ pub fn test_render() Config {
     return .{
         .samples = 10,
         .width = 400,
-        .max_depth = 5,
+        .max_depth = 2,
     };
 }
 

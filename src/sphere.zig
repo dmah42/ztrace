@@ -1,15 +1,23 @@
 const std = @import("std");
-const hit = @import("hit.zig");
+const AABB = @import("aabb.zig").AABB;
+const Hit = @import("hit.zig").Hit;
 const mat = @import("materials.zig");
-const ray = @import("ray.zig");
-const vec3 = @import("vec3.zig");
+const Ray = @import("ray.zig").Ray;
+const Vec3 = @import("vec3.zig").Vec3;
 
 pub const Sphere = struct {
-    center: vec3.Vec3,
+    center: Vec3,
     radius: f64,
     materials: mat.Materials,
 
-    pub fn intersect(self: Sphere, r: ray.Ray, t_min: f64, t_max: f64) ?hit.Hit {
+    pub fn bound(self: Sphere) AABB {
+        return .{
+            .minimum = self.center.sub(Vec3.init(self.radius, self.radius, self.radius)),
+            .maximum = self.center.add(Vec3.init(self.radius, self.radius, self.radius)),
+        };
+    }
+
+    pub fn intersect(self: Sphere, r: Ray, t_min: f64, t_max: f64) ?Hit {
         const oc = r.origin.sub(self.center);
         const a = r.direction.lenSqr();
         const half_b = oc.dot(r.direction);
@@ -30,7 +38,7 @@ pub const Sphere = struct {
                 return null;
         }
 
-        var h = hit.Hit{
+        var h = Hit{
             .o = self,
             .t = root,
             .p = r.at(root),

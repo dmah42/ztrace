@@ -4,6 +4,8 @@ const cfg = @import("config.zig");
 const ppm = @import("ppm.zig");
 const rgb = @import("rgb.zig");
 const vec3 = @import("vec3.zig");
+
+const BVHNode = @import("bvhnode.zig").BVHNode;
 const Hit = @import("hit.zig").Hit;
 const Ray = @import("ray.zig").Ray;
 const Sphere = @import("sphere.zig").Sphere;
@@ -19,27 +21,20 @@ fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
 }
 
-fn ray_color(rand: *std.rand.Random, r: Ray, spheres: []Sphere, depth: u32) Vec3 {
+fn ray_color(rand: *std.rand.Random, r: Ray, world: *BVHNode, depth: u32) Vec3 {
     if (depth >= config.max_depth) {
         return Vec3.zero();
     }
 
     const closest: f64 = 0.00001;
-    var farthest: f64 = 1000.0;
-    var nearestHit: ?Hit = null;
-    for (spheres) |sph| {
-        const optHit = sph.intersect(r, closest, farthest);
-        if (optHit) |h| {
-            nearestHit = h;
-            farthest = h.t;
-        }
-    }
-    if (nearestHit) |h| {
+    const farthest: f64 = 1000.0;
+    const optHit = world.intersect(r, closest, farthest);
+    if (optHit) |h| {
         const scattered = h.o.materials.scatter(rand, r, h) catch |err| {
             return Vec3.init(1.0, 0.0, 1.0);
         };
         if (scattered) |s| {
-            return ray_color(rand, s.scatteredRay, spheres, depth + 1).mult(Vec3, s.attenuation);
+            return ray_color(rand, s.scatteredRay, world, depth + 1).mult(Vec3, s.attenuation);
         }
         return Vec3.zero();
     }
@@ -57,7 +52,7 @@ pub fn main() !void {
         break :blk seed;
     }).random);
 
-    const camera = Camera.init(Vec3.init(13, 2, 3), Vec3.zero(), Vec3.init(0,1,0), 20.0, 0.2, 10.0);
+    const camera = Camera.init(Vec3.init(13, 2, 3), Vec3.zero(), Vec3.init(0, 1, 0), 20.0, 0.2, 10.0);
 
     const height = @floatToInt(usize, @intToFloat(f64, config.width) / cam.aspect_ratio);
 
@@ -65,8 +60,8 @@ pub fn main() !void {
     defer arena.deinit();
     var allocator = &arena.allocator;
 
-    var world = std.ArrayList(Sphere).init(&arena.allocator);
-    defer world.deinit();
+    var spheres = std.ArrayList(Sphere).init(&arena.allocator);
+    defer spheres.deinit();
 
     const ground = Sphere{
         .center = Vec3.init(0, -1000, 0),
@@ -75,17 +70,13 @@ pub fn main() !void {
             .albedo = Vec3.init(0.5, 0.5, 0.5),
         } },
     };
-    try world.append(ground);
+    try spheres.append(ground);
 
     var a: i32 = -11;
     while (a < 11) {
         var b: i32 = -11;
         while (b < 11) {
-            const c = Vec3.init(
-                @intToFloat(f64, a) + 0.9 * rand.float(f64),
-                0.2,
-                @intToFloat(f64, b) + 0.9 * rand.float(f64)
-            );
+            const c = Vec3.init(@intToFloat(f64, a) + 0.9 * rand.float(f64), 0.2, @intToFloat(f64, b) + 0.9 * rand.float(f64));
             if (c.sub(Vec3.init(4, 0.2, 0)).len() > 0.9) {
                 const lambFac = rand.float(f32);
                 const mirrorFac = rand.float(f32) * (1.0 - lambFac);
@@ -94,7 +85,7 @@ pub fn main() !void {
                 const s = Sphere{
                     .center = c,
                     .radius = 0.2,
-                    .materials = . {
+                    .materials = .{
                         .lambFac = lambFac,
                         .lamb = .{ .albedo = vec3.random(rand) },
                         .mirrorFac = mirrorFac,
@@ -110,7 +101,7 @@ pub fn main() !void {
                     },
                 };
                 std.log.debug("{s}", .{s});
-                try world.append(s);
+                try spheres.append(s);
             }
             b += 1;
         }
@@ -148,11 +139,13 @@ pub fn main() !void {
         },
     };
 
-    try world.append(d);
-    try world.append(l);
-    try world.append(m);
+    try spheres.append(d);
+    try spheres.append(l);
+    try spheres.append(m);
 
-    std.log.info("{d} spheres in the world", .{world.items.len});
+    std.log.info("{d} spheres in the world", .{spheres.items.len});
+
+    const world = try BVHNode.init(allocator, spheres.items, rand);
 
     var pixels: [config.width][height]rgb.RGB = undefined;
 
@@ -166,9 +159,9 @@ pub fn main() !void {
                 const elapsed = @intToFloat(f32, std.time.milliTimestamp() - startTime);
                 const remain = @intToFloat(f32, height - j) * (elapsed / @intToFloat(f32, j));
                 if (remain > 60) {
-                    std.log.info(".. {d} minutes remaining", .{remain / (60 * 1000)});
+                    std.log.info(".. {d:.3} minutes remaining", .{remain / (60 * 1000)});
                 } else {
-                    std.log.info(".. {d} seconds remaining", .{remain / 1000});
+                    std.log.info(".. {d:.3} seconds remaining", .{remain / 1000});
                 }
             }
         }
@@ -181,7 +174,7 @@ pub fn main() !void {
                 const v = (@intToFloat(f64, j) + rand.float(f64)) / @intToFloat(f64, height - 1);
                 const r = camera.createRay(rand, u, v);
 
-                pixelColour = pixelColour.add(ray_color(rand, r, world.items, 0));
+                pixelColour = pixelColour.add(ray_color(rand, r, world, 0));
                 sample += 1;
             }
             pixels[i][j] = rgb.RGB.fromVec3(pixelColour.mult(f64, 1.0 / @intToFloat(f64, config.samples)).pow(1.0 / 2.2));
