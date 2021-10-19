@@ -4,10 +4,18 @@ const Config = struct {
     max_depth: u32,
 };
 
+pub fn xhi_res() Config {
+    return .{
+        .samples = 1000,
+        .width = 4096,
+        .max_depth = 20,
+    };
+}
+
 pub fn hi_res() Config {
     return .{
         .samples = 500,
-        .width = 1080,
+        .width = 1270,
         .max_depth = 10,
     };
 }
@@ -22,7 +30,7 @@ pub fn test_render() Config {
 
 pub fn low_res() Config {
     return .{
-        .samples = 50,
+        .samples = 100,
         .width = 960,
         .max_depth = 5,
     };

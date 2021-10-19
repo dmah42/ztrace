@@ -11,6 +11,8 @@ const Hit = @import("hit.zig").Hit;
 const Ray = @import("ray.zig").Ray;
 const Sphere = @import("sphere.zig").Sphere;
 const XYRect = @import("xyrect.zig").XYRect;
+const XZRect = @import("xzrect.zig").XZRect;
+const YZRect = @import("yzrect.zig").YZRect;
 
 const Camera = cam.Camera;
 const Object = object.Object;
@@ -18,7 +20,7 @@ const Vec3 = vec3.Vec3;
 
 pub const log_level: std.log.Level = .info;
 
-const config = cfg.hi_res();
+const config = cfg.low_res();
 
 fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
@@ -98,20 +100,21 @@ fn createSimpleLight(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
     return Scene{
         .camera = Camera.basic(Vec3.init(8, 3, 10), Vec3.init(0, 2, 0), 40.0),
         .objects = objects,
-        .background = Vec3.init(0.0, 0.2, 0.4),
+        .background = Vec3.init(0.0, 0.02, 0.04),
     };
 }
 
 fn createBalls(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
-    var spheres = std.ArrayList(Sphere).init(alloc);
+    var objects = std.ArrayList(Object).init(alloc);
 
-    try spheres.append(Sphere{
-        .center = Vec3.init(0, -1000, 0),
-        .radius = 1000,
-        .materials = .{ .lambFac = 1.0, .lamb = .{
-            .albedo = Vec3.init(0.5, 0.5, 0.5),
-        } },
-    });
+    try objects.append(object.asSphere(
+        Sphere{ .center = Vec3.init(0, -1000, 0), .radius = 1000 },
+        .{
+            .lambFac = 1.0,
+            .lamb = .{ .albedo = Vec3.init(0.5, 0.5, 0.5) },
+        },
+        Vec3.zero(),
+    ));
 
     var a: i32 = -11;
     while (a < 11) {
@@ -123,65 +126,62 @@ fn createBalls(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
                 const mirrorFac = rand.float(f32) * (1.0 - lambFac);
                 const dielectricFac = 1.0 - lambFac - mirrorFac;
 
-                try spheres.append(Sphere{
-                    .center = c,
-                    .radius = 0.2,
-                    .materials = .{
+                try objects.append(object.asSphere(
+                    Sphere{ .center = c, .radius = 0.2 },
+                    .{
                         .lambFac = lambFac,
                         .lamb = .{ .albedo = vec3.random(rand) },
                         .mirrorFac = mirrorFac,
-                        .mirror = .{
-                            .albedo = vec3.random(rand),
-                            .fuzz = rand.float(f64),
-                        },
+                        .mirror = .{ .albedo = vec3.random(rand), .fuzz = rand.float(f64) },
                         .dielectricFac = dielectricFac,
-                        .dielectric = .{
-                            .albedo = vec3.random(rand),
-                            .index = rand.float(f64) + 0.5,
-                        },
+                        .dielectric = .{ .albedo = vec3.random(rand), .index = rand.float(f64) + 0.5 },
                     },
-                });
+                    // TODO: random emitters?
+                    Vec3.zero(),
+                ));
             }
             b += 1;
         }
         a += 1;
     }
 
-    try spheres.append(Sphere{
-        .center = Vec3.init(0, 1, 0),
-        .radius = 1.0,
-        .materials = .{
+    try objects.append(object.asSphere(
+        Sphere{ .center = Vec3.init(0, 1, 0), .radius = 1.0 },
+        .{
             .dielectricFac = 1.0,
             .dielectric = .{ .index = 1.5 },
         },
-    });
+        Vec3.zero(),
+    ));
 
-    try spheres.append(Sphere{
-        .center = Vec3.init(-4, 1, 0),
-        .radius = 1.0,
-        .materials = .{
+    try objects.append(object.asSphere(
+        Sphere{ .center = Vec3.init(-4, 1, 0), .radius = 1.0 },
+        .{
             .lambFac = 1.0,
-            .lamb = .{
-                .albedo = Vec3.init(0.4, 0.2, 0.1),
-            },
+            .lamb = .{ .albedo = Vec3.init(0.4, 0.2, 0.1) },
         },
-    });
+        Vec3.zero(),
+    ));
 
-    try spheres.append(Sphere{
-        .center = Vec3.init(4, 1, 0),
-        .radius = 1.0,
-        .materials = .{
+    try objects.append(object.asSphere(
+        Sphere{ .center = Vec3.init(4, 1, 0), .radius = 1.0 },
+        .{
             .mirrorFac = 1.0,
-            .mirror = .{
-                .albedo = Vec3.init(0.7, 0.6, 0.5),
-            },
+            .mirror = .{ .albedo = Vec3.init(0.7, 0.6, 0.5) },
         },
-    });
+        Vec3.zero(),
+    ));
+
+    try objects.append(object.asXZRect(
+        XZRect{ .x0 = -4, .x1 = 4, .z0 = -4, .z1 = 4, .k = 3 },
+        .{},
+        Vec3.init(1, 1, 1),
+    ));
 
     return Scene{
         .camera = Camera.init(Vec3.init(13, 2, 3), Vec3.zero(), Vec3.init(0, 1, 0), 20.0, 0.2, 10.0),
-        .spheres = spheres,
-        .background = Vec3.init(0.5, 0.7, 1.0),
+        .objects = objects,
+        .background = Vec3.init(0.1, 0.3, 0.5),
     };
 }
 
@@ -192,6 +192,8 @@ pub fn main() !void {
         break :blk seed;
     }).random);
 
+    std.log.info("using config {s}", .{config});
+
     const height = @floatToInt(usize, @intToFloat(f64, config.width) / cam.aspect_ratio);
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -199,7 +201,7 @@ pub fn main() !void {
     var allocator = &arena.allocator;
 
     std.log.info("creating world", .{});
-    const scene = try createSimpleLight(allocator, rand);
+    const scene = try createBalls(allocator, rand);
     defer scene.objects.deinit();
 
     std.log.info("{d} objects in the world", .{scene.objects.items.len});

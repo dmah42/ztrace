@@ -5,16 +5,22 @@ const Ray = @import("ray.zig").Ray;
 const Sphere = @import("sphere.zig").Sphere;
 const Vec3 = @import("vec3.zig").Vec3;
 const XYRect = @import("xyrect.zig").XYRect;
+const XZRect = @import("xzrect.zig").XZRect;
+const YZRect = @import("yzrect.zig").YZRect;
 
 pub const Object = struct {
     const TypeTag = enum {
         sphere,
         xyrect,
+        xzrect,
+        yzrect,
     };
 
     const Type = union(TypeTag) {
         sphere: Sphere,
         xyrect: XYRect,
+        xzrect: XZRect,
+        yzrect: YZRect,
     };
 
     t: Type,
@@ -25,6 +31,8 @@ pub const Object = struct {
         return switch (self.t) {
             .sphere => |*s| s.bound(),
             .xyrect => |*r| r.bound(),
+            .xzrect => |*r| r.bound(),
+            .yzrect => |*r| r.bound(),
         };
     }
 
@@ -32,6 +40,8 @@ pub const Object = struct {
         var maybeHit = switch (self.t) {
             .sphere => |*s| s.intersect(ray, t_min, t_max),
             .xyrect => |*r| r.intersect(ray, t_min, t_max),
+            .xzrect => |*r| r.intersect(ray, t_min, t_max),
+            .yzrect => |*r| r.intersect(ray, t_min, t_max),
         };
         if (maybeHit) |hit| {
             return Hit{
@@ -60,6 +70,26 @@ pub fn asXYRect(r: XYRect, m: Materials, e: Vec3) Object {
     return Object{
         .t = .{
             .xyrect = r,
+        },
+        .materials = m,
+        .emittance = e,
+    };
+}
+
+pub fn asXZRect(r: XZRect, m: Materials, e: Vec3) Object {
+    return Object{
+        .t = .{
+            .xzrect = r,
+        },
+        .materials = m,
+        .emittance = e,
+    };
+}
+
+pub fn asYZRect(r: YZRect, m: Materials, e: Vec3) Object {
+    return Object{
+        .t = .{
+            .yzrect = r,
         },
         .materials = m,
         .emittance = e,
