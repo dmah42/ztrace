@@ -6,10 +6,10 @@ pub const RGB = struct {
     b: u8,
 
     pub fn fromVec3(v: vec3.Vec3) RGB {
-        const scaled = v.mult(f64, 255.0);
+        const scaled = v.clamp(0, 0.999).mult(f64, 255.0);
         const ir = @floatToInt(u8, scaled.x());
         const ig = @floatToInt(u8, scaled.y());
         const ib = @floatToInt(u8, scaled.z());
-        return .{.r = ir, .g = ig, .b = ib};
+        return .{ .r = ir, .g = ig, .b = ib };
     }
 };

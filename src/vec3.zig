@@ -91,6 +91,14 @@ pub const Vec3 = struct {
         // v - 2 * dot(v, n) * n
         return self.sub(n.mult(f64, 2 * self.dot(n)));
     }
+
+    pub fn clamp(self: Vec3, min: f64, max: f64) Vec3 {
+        return .{ .v = .{
+            math.clamp(self.v[0], min, max),
+            math.clamp(self.v[1], min, max),
+            math.clamp(self.v[2], min, max),
+        } };
+    }
 };
 
 pub fn cross(u: Vec3, v: Vec3) Vec3 {

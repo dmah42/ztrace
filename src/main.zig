@@ -11,9 +11,9 @@ const Hit = @import("hit.zig").Hit;
 const Materials = @import("materials.zig").Materials;
 const Ray = @import("ray.zig").Ray;
 const Sphere = @import("sphere.zig").Sphere;
-const XYRect = @import("xyrect.zig").XYRect;
-const XZRect = @import("xzrect.zig").XZRect;
-const YZRect = @import("yzrect.zig").YZRect;
+const XYRect = @import("aarect.zig").XYRect;
+const XZRect = @import("aarect.zig").XZRect;
+const YZRect = @import("aarect.zig").YZRect;
 
 const Camera = cam.Camera;
 const Object = object.Object;
@@ -21,7 +21,7 @@ const Vec3 = vec3.Vec3;
 
 pub const log_level: std.log.Level = .info;
 
-const config = cfg.low_res();
+const config = cfg.hi_res();
 
 fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
@@ -235,7 +235,7 @@ fn createCornellBox(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
         .z0 = 227,
         .z1 = 332,
         .k = 554,
-    }, .{}, Vec3.init(1, 1, 1)));
+    }, .{}, Vec3.init(15, 15, 15)));
 
     return Scene{
         .camera = Camera.basic(
@@ -279,14 +279,14 @@ pub fn main() !void {
 
     var maxColour: Vec3 = undefined;
 
-    const test_ray = Ray{
-        .origin = Vec3.init(278, 278, -800),
-        .direction = vec3.unit(Vec3.init(230, 278, 0).sub(Vec3.init(278, 278, -800))),
-    };
+    // const test_ray = Ray{
+    //     .origin = Vec3.init(278, 278, -800),
+    //     .direction = vec3.unit(Vec3.init(230, 278, 0).sub(Vec3.init(278, 278, -800))),
+    // };
 
-    const test_colour = ray_color(rand, test_ray, world, scene.background, 0);
+    // const test_colour = ray_color(rand, test_ray, world, scene.background, 0);
 
-    std.log.debug("test ray output: {s}", test_colour);
+    // std.log.debug("test ray output: {s}", test_colour);
 
     var j: usize = 0;
     while (j < height) {

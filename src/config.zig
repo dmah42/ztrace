@@ -15,8 +15,16 @@ pub fn xhi_res() Config {
 pub fn hi_res() Config {
     return .{
         .samples = 500,
-        .width = 1080,
+        .width = 1024,
         .max_depth = 10,
+    };
+}
+
+pub fn lo_res() Config {
+    return .{
+        .samples = 100,
+        .width = 800,
+        .max_depth = 5,
     };
 }
 
@@ -25,13 +33,5 @@ pub fn test_render() Config {
         .samples = 10,
         .width = 400,
         .max_depth = 2,
-    };
-}
-
-pub fn low_res() Config {
-    return .{
-        .samples = 100,
-        .width = 800,
-        .max_depth = 5,
     };
 }
