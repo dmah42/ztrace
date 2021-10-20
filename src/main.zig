@@ -3,13 +3,13 @@ const cam = @import("camera.zig");
 const cfg = @import("config.zig");
 const object = @import("object.zig");
 const ppm = @import("ppm.zig");
-const rgb = @import("rgb.zig");
 const vec3 = @import("vec3.zig");
 
 const BVHNode = @import("bvhnode.zig").BVHNode;
 const Hit = @import("hit.zig").Hit;
 const Materials = @import("materials.zig").Materials;
 const Ray = @import("ray.zig").Ray;
+const RGB = @import("rgb.zig").RGB;
 const Sphere = @import("sphere.zig").Sphere;
 const XYRect = @import("aarect.zig").XYRect;
 const XZRect = @import("aarect.zig").XZRect;
@@ -242,6 +242,7 @@ fn createCornellBox(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
             Vec3.init(278, 278, -800),
             Vec3.init(278, 278, 0),
             40.0,
+            1.0,
         ),
         .objects = objects,
         .background = Vec3.zero(),
@@ -257,8 +258,6 @@ pub fn main() !void {
 
     std.log.info("using config {s}", .{config});
 
-    const height = @floatToInt(usize, @intToFloat(f64, config.width) / cam.aspect_ratio);
-
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     var allocator = &arena.allocator;
@@ -271,9 +270,19 @@ pub fn main() !void {
 
     std.log.info("slicing up the world", .{});
     const world = try BVHNode.init(allocator, scene.objects.items, rand);
-    std.log.info("ready to throw some pixels!", .{});
 
-    var pixels: [config.width][height]rgb.RGB = undefined;
+    const height = @floatToInt(usize, @intToFloat(f64, config.width) / scene.camera.aspect_ratio);
+    var pixels: [][]RGB = try allocator.alloc([]RGB, config.width);
+    var pj: usize = 0;
+    while (pj < height) {
+        var pi: usize = 0;
+        while (pi < config.width) {
+            pixels[pi] = try allocator.alloc(RGB, height);
+            pi += 1;
+        }
+        pj += 1;
+    }
+    std.log.info("ready to throw some pixels!", .{});
 
     const startTime = std.time.milliTimestamp();
 
@@ -314,14 +323,14 @@ pub fn main() !void {
                 pixelColour = pixelColour.add(ray_color(rand, r, world, scene.background, 0));
                 sample += 1;
             }
-            pixels[i][j] = rgb.RGB.fromVec3(pixelColour.mult(f64, 1.0 / @intToFloat(f64, config.samples)).pow(1.0 / 2.2));
+            pixels[i][j] = RGB.fromVec3(pixelColour.mult(f64, 1.0 / @intToFloat(f64, config.samples)).pow(1.0 / 2.2));
 
             i += 1;
         }
         j += 1;
     }
 
-    try ppm.write(std.io.getStdOut().writer(), &pixels);
+    try ppm.write(std.io.getStdOut().writer(), pixels);
 
     std.log.info("all your pixels are belong to us.", .{});
 }

@@ -11,7 +11,7 @@ pub fn write(writer: std.fs.File.Writer, pixels: anytype) !void {
     try writer.print("{d} {d}\n", .{ width, height });
     _ = try writer.write("255\n");
 
-    var j: i32 = height - 1;
+    var j: i32 = @intCast(i32, height - 1);
     while (j >= 0) {
         if (@mod(j, 10) == 0) {
             std.log.info("scanlines remaining {d} / {d}", .{ j, height });

@@ -4,12 +4,10 @@ const ray = @import("ray.zig");
 const vec3 = @import("vec3.zig");
 const Vec3 = vec3.Vec3;
 
-// TODO: make this a field of the below.
-pub const aspect_ratio: f64 = 16.0 / 9.0;
-
 pub const Camera = struct {
     origin: Vec3,
     lower_left: Vec3,
+    aspect_ratio: f64,
     horiz: Vec3,
     vert: Vec3,
     lens_radius: f64,
@@ -17,19 +15,19 @@ pub const Camera = struct {
     v: Vec3,
     w: Vec3,
 
-    pub fn basic(from: Vec3, to: Vec3, vfov: f64) Camera {
-        return init(from, to, Vec3.init(0.0, 1.0, 0.0), vfov, 0.0, to.sub(from).len());
+    pub fn basic(from: Vec3, to: Vec3, vfov: f64, ar: f64) Camera {
+        return init(from, to, Vec3.init(0.0, 1.0, 0.0), vfov, ar, 0.0, to.sub(from).len());
     }
 
     pub fn aperture(from: Vec3, to: Vec3, vfov: f64, a: f64) Camera {
-        return init(from, to, Vec3.init(0.0, 1.0, 0.0), vfov, a, to.sub(from).len());
+        return init(from, to, Vec3.init(0.0, 1.0, 0.0), vfov, ar, a, to.sub(from).len());
     }
 
-    pub fn init(from: Vec3, to: Vec3, up: Vec3, vfov: f64, a: f64, focus_dist: f64) Camera {
+    pub fn init(from: Vec3, to: Vec3, up: Vec3, vfov: f64, ar: f64, a: f64, focus_dist: f64) Camera {
         const theta = vfov * math.pi / 180.0;
         const h = math.tan(theta / 2.0);
         const view_height = 2.0 * h;
-        const view_width = aspect_ratio * view_height;
+        const view_width = ar * view_height;
 
         const w = vec3.unit(from.sub(to));
         const u = vec3.unit(vec3.cross(up, w));
@@ -48,6 +46,7 @@ pub const Camera = struct {
             .lower_left = lower_left,
             .horiz = horiz,
             .vert = vert,
+            .aspect_ratio = ar,
             .lens_radius = a / 2.0,
             .u = u,
             .v = v,
