@@ -60,8 +60,8 @@ pub const BVHNode = struct {
         } else {
             switch (axis) {
                 0 => std.sort.sort(Object, objects, {}, x_comparator),
-                1 => std.sort.sort(Object, objects, {}, x_comparator),
-                2 => std.sort.sort(Object, objects, {}, x_comparator),
+                1 => std.sort.sort(Object, objects, {}, y_comparator),
+                2 => std.sort.sort(Object, objects, {}, z_comparator),
                 else => std.log.err("something's gone horribly wrong", .{}),
             }
 

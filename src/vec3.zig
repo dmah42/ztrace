@@ -108,9 +108,9 @@ pub fn unit(v: Vec3) Vec3 {
 pub fn random(_rand: *rand.Random) Vec3 {
     return .{
         .v = .{
-            _rand.float(f64),
-            _rand.float(f64),
-            _rand.float(f64),
+            _rand.float(f64) * 2.0 - 1.0,
+            _rand.float(f64) * 2.0 - 1.0,
+            _rand.float(f64) * 2.0 - 1.0,
         },
     };
 }

@@ -8,6 +8,7 @@ const vec3 = @import("vec3.zig");
 
 const BVHNode = @import("bvhnode.zig").BVHNode;
 const Hit = @import("hit.zig").Hit;
+const Materials = @import("materials.zig").Materials;
 const Ray = @import("ray.zig").Ray;
 const Sphere = @import("sphere.zig").Sphere;
 const XYRect = @import("xyrect.zig").XYRect;
@@ -32,7 +33,7 @@ fn ray_color(rand: *std.rand.Random, r: Ray, world: *BVHNode, background: Vec3, 
     }
 
     const closest: f64 = 0.00001;
-    const farthest: f64 = 1000.0;
+    const farthest: f64 = 100000.0;
     const optHit = world.intersect(r, closest, farthest);
     if (optHit) |h| {
         const scattered = h.o.materials.scatter(rand, r, h) catch |err| {
@@ -185,6 +186,68 @@ fn createBalls(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
     };
 }
 
+fn createCornellBox(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
+    var objects = std.ArrayList(Object).init(alloc);
+
+    const red: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.65, 0.05, 0.05) } };
+    const white: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.73, 0.73, 0.73) } };
+    const green: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.12, 0.45, 0.15) } };
+
+    try objects.append(object.asYZRect(.{
+        .y0 = 0.0,
+        .y1 = 555.0,
+        .z0 = 0.0,
+        .z1 = 555.0,
+        .k = 555.0,
+    }, green, Vec3.zero()));
+    try objects.append(object.asYZRect(.{
+        .y0 = 0.0,
+        .y1 = 555.0,
+        .z0 = 0.0,
+        .z1 = 555.0,
+        .k = 0.0,
+    }, red, Vec3.zero()));
+    try objects.append(object.asXZRect(.{
+        .x0 = 0.0,
+        .x1 = 555.0,
+        .z0 = 0.0,
+        .z1 = 555.0,
+        .k = 0.0,
+    }, white, Vec3.zero()));
+    try objects.append(object.asXZRect(.{
+        .x0 = 0.0,
+        .x1 = 555.0,
+        .z0 = 0.0,
+        .z1 = 555.0,
+        .k = 555.0,
+    }, white, Vec3.zero()));
+    try objects.append(object.asXYRect(.{
+        .x0 = 0.0,
+        .x1 = 555.0,
+        .y0 = 0.0,
+        .y1 = 555.0,
+        .k = 555.0,
+    }, white, Vec3.zero()));
+
+    try objects.append(object.asXZRect(.{
+        .x0 = 213,
+        .x1 = 343,
+        .z0 = 227,
+        .z1 = 332,
+        .k = 554,
+    }, .{}, Vec3.init(1, 1, 1)));
+
+    return Scene{
+        .camera = Camera.basic(
+            Vec3.init(278, 278, -800),
+            Vec3.init(278, 278, 0),
+            40.0,
+        ),
+        .objects = objects,
+        .background = Vec3.zero(),
+    };
+}
+
 pub fn main() !void {
     const rand = &(std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
@@ -201,7 +264,7 @@ pub fn main() !void {
     var allocator = &arena.allocator;
 
     std.log.info("creating world", .{});
-    const scene = try createBalls(allocator, rand);
+    const scene = try createCornellBox(allocator, rand);
     defer scene.objects.deinit();
 
     std.log.info("{d} objects in the world", .{scene.objects.items.len});
@@ -213,6 +276,17 @@ pub fn main() !void {
     var pixels: [config.width][height]rgb.RGB = undefined;
 
     const startTime = std.time.milliTimestamp();
+
+    var maxColour: Vec3 = undefined;
+
+    const test_ray = Ray{
+        .origin = Vec3.init(278, 278, -800),
+        .direction = vec3.unit(Vec3.init(230, 278, 0).sub(Vec3.init(278, 278, -800))),
+    };
+
+    const test_colour = ray_color(rand, test_ray, world, scene.background, 0);
+
+    std.log.debug("test ray output: {s}", test_colour);
 
     var j: usize = 0;
     while (j < height) {

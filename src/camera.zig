@@ -4,6 +4,7 @@ const ray = @import("ray.zig");
 const vec3 = @import("vec3.zig");
 const Vec3 = vec3.Vec3;
 
+// TODO: make this a field of the below.
 pub const aspect_ratio: f64 = 16.0 / 9.0;
 
 pub const Camera = struct {
@@ -17,11 +18,11 @@ pub const Camera = struct {
     w: Vec3,
 
     pub fn basic(from: Vec3, to: Vec3, vfov: f64) Camera {
-        return init(from, to, Vec3.init(0.0,1.0,0.0), vfov, 0.0, to.sub(from).len());
+        return init(from, to, Vec3.init(0.0, 1.0, 0.0), vfov, 0.0, to.sub(from).len());
     }
 
     pub fn aperture(from: Vec3, to: Vec3, vfov: f64, a: f64) Camera {
-        return init(from, to, Vec3.init(0.0,1.0,0.0), vfov, a, to.sub(from).len());
+        return init(from, to, Vec3.init(0.0, 1.0, 0.0), vfov, a, to.sub(from).len());
     }
 
     pub fn init(from: Vec3, to: Vec3, up: Vec3, vfov: f64, a: f64, focus_dist: f64) Camera {

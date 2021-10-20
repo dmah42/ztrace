@@ -18,7 +18,7 @@ pub const Lambertian = struct {
         }
         return Scattered{
             .attenuation = self.albedo,
-            .scatteredRay = Ray{ .origin = h.p, .direction = vec3.unit(target) },
+            .scatteredRay = Ray{ .origin = h.p, .direction = target },
         };
     }
 };

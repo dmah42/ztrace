@@ -4,9 +4,9 @@ const Materials = @import("materials.zig").Materials;
 const Ray = @import("ray.zig").Ray;
 const Sphere = @import("sphere.zig").Sphere;
 const Vec3 = @import("vec3.zig").Vec3;
-const XYRect = @import("xyrect.zig").XYRect;
-const XZRect = @import("xzrect.zig").XZRect;
-const YZRect = @import("yzrect.zig").YZRect;
+const XYRect = @import("aarect.zig").XYRect;
+const XZRect = @import("aarect.zig").XZRect;
+const YZRect = @import("aarect.zig").YZRect;
 
 pub const Object = struct {
     const TypeTag = enum {
