@@ -5,11 +5,13 @@ const object = @import("object.zig");
 const ppm = @import("ppm.zig");
 const vec3 = @import("vec3.zig");
 
+const Box = @import("box.zig").Box;
 const BVHNode = @import("bvhnode.zig").BVHNode;
 const Hit = @import("hit.zig").Hit;
 const Materials = @import("materials.zig").Materials;
 const Ray = @import("ray.zig").Ray;
 const RGB = @import("rgb.zig").RGB;
+const RotateY = @import("rotate.zig").RotateY;
 const Sphere = @import("sphere.zig").Sphere;
 const XYRect = @import("aarect.zig").XYRect;
 const XZRect = @import("aarect.zig").XZRect;
@@ -214,6 +216,7 @@ fn createCornellBox(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
         .z1 = 555.0,
         .k = 0.0,
     }, white, Vec3.zero()));
+
     try objects.append(object.asXZRect(.{
         .x0 = 0.0,
         .x1 = 555.0,
@@ -229,6 +232,7 @@ fn createCornellBox(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
         .k = 555.0,
     }, white, Vec3.zero()));
 
+    // light
     try objects.append(object.asXZRect(.{
         .x0 = 213,
         .x1 = 343,
@@ -237,12 +241,44 @@ fn createCornellBox(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
         .k = 554,
     }, .{}, Vec3.init(15, 15, 15)));
 
+    // boxes
+    var right_box = try alloc.create(Object);
+    right_box.* = object.asBox(
+        Box.init(
+            Vec3.init(130, 0, 65),
+            Vec3.init(165 + 130, 165, 165 + 65),
+        ),
+        .{},
+        Vec3.zero(),
+    );
+    try objects.append(object.asRotateY(
+        RotateY.init(right_box, -18),
+        white,
+        Vec3.zero(),
+    ));
+
+    var left_box = try alloc.create(Object);
+    left_box.* = object.asBox(
+        Box.init(
+            Vec3.init(265, 0, 295),
+            Vec3.init(165 + 265, 330, 165 + 295),
+        ),
+        .{},
+        Vec3.zero(),
+    );
+
+    try objects.append(object.asRotateY(
+        RotateY.init(left_box, 15),
+        white,
+        Vec3.zero(),
+    ));
+
     return Scene{
         .camera = Camera.basic(
             Vec3.init(278, 278, -800),
             Vec3.init(278, 278, 0),
             40.0,
-            1.0,
+            1.2,
         ),
         .objects = objects,
         .background = Vec3.zero(),
@@ -288,14 +324,14 @@ pub fn main() !void {
 
     var maxColour: Vec3 = undefined;
 
-    // const test_ray = Ray{
-    //     .origin = Vec3.init(278, 278, -800),
-    //     .direction = vec3.unit(Vec3.init(230, 278, 0).sub(Vec3.init(278, 278, -800))),
-    // };
+    const test_ray = Ray{
+        .origin = Vec3.init(278, 278, -800),
+        .direction = vec3.unit(Vec3.init(340, 160, 375).sub(Vec3.init(278, 278, -800))),
+    };
 
-    // const test_colour = ray_color(rand, test_ray, world, scene.background, 0);
+    const test_colour = ray_color(rand, test_ray, world, scene.background, 0);
 
-    // std.log.debug("test ray output: {s}", test_colour);
+    std.log.debug("test ray output: {s}", test_colour);
 
     var j: usize = 0;
     while (j < height) {

@@ -140,3 +140,19 @@ pub fn random_in_unit_disc(_rand: *rand.Random) Vec3 {
         if (v.lenSqr() < 1.0) return v;
     }
 }
+
+pub fn minimum(a: Vec3, b: Vec3) Vec3 {
+    return .{ .v = .{
+        math.min(a.v[0], b.v[0]),
+        math.min(a.v[1], b.v[1]),
+        math.min(a.v[2], b.v[2]),
+    } };
+}
+
+pub fn maximum(a: Vec3, b: Vec3) Vec3 {
+    return .{ .v = .{
+        math.max(a.v[0], b.v[0]),
+        math.max(a.v[1], b.v[1]),
+        math.max(a.v[2], b.v[2]),
+    } };
+}
