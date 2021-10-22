@@ -23,7 +23,7 @@ const Vec3 = vec3.Vec3;
 
 pub const log_level: std.log.Level = .info;
 
-const config = cfg.hi_res();
+const config = cfg.xhi_res();
 
 fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
@@ -188,6 +188,68 @@ fn createBalls(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
     };
 }
 
+fn createTestInstance(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
+    var objects = std.ArrayList(Object).init(alloc);
+
+    const red: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.65, 0.05, 0.05) } };
+    const pink: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.65, 0.05, 0.65) } };
+    const white: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.73, 0.73, 0.73) } };
+    const green: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.12, 0.45, 0.15) } };
+    const blue: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.15, 0.12, 0.45) } };
+
+    const rect = try alloc.create(Object);
+    rect.* = object.asXYRect(.{
+        .x0 = 0.0,
+        .x1 = 6.0,
+        .y0 = 0.0,
+        .y1 = 6.0,
+        .k = 0.0,
+    }, white, Vec3.zero());
+    try objects.append(rect.*);
+
+    const translated_rect = try alloc.create(Object);
+    translated_rect.* = object.asTranslate(.{
+        .object = rect,
+        .offset = Vec3.init(10.0, 0.0, 0.0),
+    }, green, Vec3.zero());
+    try objects.append(translated_rect.*);
+
+    const rotated_trans = try alloc.create(Object);
+    rotated_trans.* = object.asRotateY(RotateY.init(translated_rect, 45.0), red, Vec3.zero());
+    try objects.append(rotated_trans.*);
+
+    const rotated_rect = try alloc.create(Object);
+    rotated_rect.* = object.asRotateY(RotateY.init(rect, -45.0), pink, Vec3.zero());
+    try objects.append(rotated_rect.*);
+
+    const translated_rot = try alloc.create(Object);
+    translated_rot.* = object.asTranslate(.{
+        .object = rotated_rect,
+        .offset = Vec3.init(0.0, 10.0, 0.0),
+    }, blue, Vec3.zero());
+    try objects.append(translated_rot.*);
+
+    const light = object.asXYRect(.{
+        .x0 = -20.0,
+        .x1 = 20.0,
+        .y0 = -20.0,
+        .y1 = 20.0,
+        .k = -60,
+    }, .{}, Vec3.init(1.0, 1.0, 1.0));
+    try objects.append(light);
+
+    return Scene{
+        .camera = Camera.basic(
+            Vec3.init(12.0, 5.0, -50),
+            Vec3.init(12.0, 5.0, 0),
+            40.0,
+            1.0,
+        ),
+        .objects = objects,
+        .background = Vec3.init(0.1, 0.1, 0.1),
+    };
+}
+
 fn createCornellBox(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
     var objects = std.ArrayList(Object).init(alloc);
 
@@ -243,35 +305,31 @@ fn createCornellBox(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
 
     // boxes
     var right_box = try alloc.create(Object);
-    right_box.* = object.asBox(
-        Box.init(
-            Vec3.init(130, 0, 65),
-            Vec3.init(165 + 130, 165, 165 + 65),
-        ),
-        .{},
-        Vec3.zero(),
-    );
-    try objects.append(object.asRotateY(
-        RotateY.init(right_box, -18),
-        white,
-        Vec3.zero(),
-    ));
+    right_box.* = object.asBox(Box.init(Vec3.zero(), Vec3.init(165, 165, 165)), .{}, Vec3.zero());
+
+    var rotated_right_box = try alloc.create(Object);
+    rotated_right_box.* = object.asRotateY(RotateY.init(right_box, -18), white, Vec3.zero());
+
+    var translated_right_box = try alloc.create(Object);
+    translated_right_box.* = object.asTranslate(.{
+        .object = rotated_right_box,
+        .offset = Vec3.init(130, 0, 65),
+    }, white, Vec3.zero());
+    try objects.append(translated_right_box.*);
 
     var left_box = try alloc.create(Object);
-    left_box.* = object.asBox(
-        Box.init(
-            Vec3.init(265, 0, 295),
-            Vec3.init(165 + 265, 330, 165 + 295),
-        ),
-        .{},
-        Vec3.zero(),
-    );
+    left_box.* = object.asBox(Box.init(Vec3.zero(), Vec3.init(165, 330, 165)), .{}, Vec3.zero());
 
-    try objects.append(object.asRotateY(
-        RotateY.init(left_box, 15),
-        white,
-        Vec3.zero(),
-    ));
+    var rotated_left_box = try alloc.create(Object);
+    rotated_left_box.* = object.asRotateY(RotateY.init(left_box, 15), .{}, Vec3.zero());
+
+    const translated_left_box = try alloc.create(Object);
+    translated_left_box.* = object.asTranslate(.{
+        .object = rotated_left_box,
+        .offset = Vec3.init(265, 0, 295),
+    }, white, Vec3.zero());
+
+    try objects.append(translated_left_box.*);
 
     return Scene{
         .camera = Camera.basic(
@@ -323,15 +381,6 @@ pub fn main() !void {
     const startTime = std.time.milliTimestamp();
 
     var maxColour: Vec3 = undefined;
-
-    const test_ray = Ray{
-        .origin = Vec3.init(278, 278, -800),
-        .direction = vec3.unit(Vec3.init(340, 160, 375).sub(Vec3.init(278, 278, -800))),
-    };
-
-    const test_colour = ray_color(rand, test_ray, world, scene.background, 0);
-
-    std.log.debug("test ray output: {s}", test_colour);
 
     var j: usize = 0;
     while (j < height) {

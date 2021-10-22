@@ -7,7 +7,7 @@ const Config = struct {
 pub fn xhi_res() Config {
     return .{
         .samples = 1000,
-        .width = 4096,
+        .width = 1280,
         .max_depth = 20,
     };
 }
