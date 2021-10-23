@@ -3,344 +3,72 @@ const cam = @import("camera.zig");
 const cfg = @import("config.zig");
 const object = @import("object.zig");
 const ppm = @import("ppm.zig");
+const scene = @import("scene.zig");
 const vec3 = @import("vec3.zig");
 
-const Box = @import("box.zig").Box;
 const BVHNode = @import("bvhnode.zig").BVHNode;
-const Hit = @import("hit.zig").Hit;
-const Materials = @import("materials.zig").Materials;
+const PDF = @import("pdf.zig").PDF;
 const Ray = @import("ray.zig").Ray;
 const RGB = @import("rgb.zig").RGB;
-const RotateY = @import("rotate.zig").RotateY;
-const Sphere = @import("sphere.zig").Sphere;
-const XYRect = @import("aarect.zig").XYRect;
-const XZRect = @import("aarect.zig").XZRect;
-const YZRect = @import("aarect.zig").YZRect;
 
-const Camera = cam.Camera;
 const Object = object.Object;
 const Vec3 = vec3.Vec3;
 
 pub const log_level: std.log.Level = .info;
 
-const config = cfg.xhi_res();
+const config = cfg.lo_res();
 
 fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
 }
 
-fn ray_color(rand: *std.rand.Random, r: Ray, world: *BVHNode, background: Vec3, depth: u32) Vec3 {
+fn rayColor(rand: *std.rand.Random, r: Ray, world: *BVHNode, light: Object, background: Vec3, depth: u32) Vec3 {
     if (depth >= config.max_depth) {
         return Vec3.zero();
     }
 
     const closest: f64 = 0.00001;
-    const farthest: f64 = 100000.0;
+    const farthest: f64 = std.math.inf(f64);
     const optHit = world.intersect(r, closest, farthest);
     if (optHit) |h| {
+        std.log.debug("hit object '{s}'", .{h.o.name});
         const scattered = h.o.materials.scatter(rand, r, h) catch |err| {
             return Vec3.init(1.0, 0.0, 1.0);
         };
         if (scattered) |s| {
-            return ray_color(rand, s.scatteredRay, world, background, depth + 1).mult(Vec3, s.attenuation);
+            std.log.debug(".. scattering", .{});
+            if (s.isSpecular()) {
+                const color = rayColor(rand, s.ray_or_pdf.specular_ray, world, light, background, depth + 1).mult(Vec3, s.attenuation);
+                std.log.debug(".. specular. returning {s}", .{color});
+                return color;
+            }
+
+            const light_pdf = PDF.initHittable(&light, h.p);
+            const mixture_pdf = PDF.initMixture(&light_pdf, &s.ray_or_pdf.pdf);
+
+            const scattered_ray = Ray.init(h.p, mixture_pdf.generate(rand));
+            const pdf_val = mixture_pdf.value(scattered_ray.direction);
+
+            std.log.debug(".. scattering to {s} with pdf {d:.2}", .{ scattered_ray, pdf_val });
+
+            const scattered_color = rayColor(rand, scattered_ray, world, light, background, depth + 1);
+
+            const scattered_pdf = h.o.materials.scatteredPdf(rand, r, h, scattered_ray) catch |err| {
+                return 0.0;
+            } orelse return Vec3.init(1.0, 0.0, 1.0);
+
+            std.log.debug(".. color from scattered ray {s} with pdf {d:.2}", .{ scattered_color, scattered_pdf });
+
+            const inv_pdf = 1.0 / pdf_val;
+
+            const color = h.o.emittance.add(scattered_color.mult(f64, scattered_pdf).mult(Vec3, s.attenuation).mult(f64, inv_pdf));
+            std.log.debug(".. returning colour {s}", .{color});
+            return color;
         }
         return h.o.emittance;
     }
 
     return background;
-}
-
-const Scene = struct {
-    camera: Camera,
-    objects: std.ArrayList(Object),
-    background: Vec3,
-};
-
-fn createSimpleLight(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
-    var objects = std.ArrayList(Object).init(alloc);
-
-    try objects.append(object.asSphere(Sphere{
-        .center = Vec3.init(0, -1000, 0),
-        .radius = 1000,
-    }, .{
-        .lambFac = 1.0,
-        .lamb = .{
-            .albedo = Vec3.init(0.5, 0.5, 0.5),
-        },
-    }, Vec3.zero()));
-
-    try objects.append(object.asSphere(Sphere{
-        .center = Vec3.init(0, 2, 0),
-        .radius = 2,
-    }, .{
-        .lambFac = 1.0,
-        .lamb = .{
-            .albedo = Vec3.init(0.8, 0.2, 0.6),
-        },
-    }, Vec3.zero()));
-
-    try objects.append(object.asXYRect(
-        XYRect{
-            .x0 = -3,
-            .x1 = -1,
-            .y0 = 2,
-            .y1 = 4,
-            .k = 5,
-        },
-        .{},
-        Vec3.init(1, 1, 1),
-    ));
-
-    try objects.append(object.asSphere(
-        Sphere{
-            .center = Vec3.init(2, 0.5, 3),
-            .radius = 0.5,
-        },
-        .{},
-        Vec3.init(1, 1, 1),
-    ));
-
-    return Scene{
-        .camera = Camera.basic(Vec3.init(8, 3, 10), Vec3.init(0, 2, 0), 40.0),
-        .objects = objects,
-        .background = Vec3.init(0.0, 0.02, 0.04),
-    };
-}
-
-fn createBalls(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
-    var objects = std.ArrayList(Object).init(alloc);
-
-    try objects.append(object.asSphere(
-        Sphere{ .center = Vec3.init(0, -1000, 0), .radius = 1000 },
-        .{
-            .lambFac = 1.0,
-            .lamb = .{ .albedo = Vec3.init(0.5, 0.5, 0.5) },
-        },
-        Vec3.zero(),
-    ));
-
-    var a: i32 = -11;
-    while (a < 11) {
-        var b: i32 = -11;
-        while (b < 11) {
-            const c = Vec3.init(@intToFloat(f64, a) + 0.9 * rand.float(f64), 0.2, @intToFloat(f64, b) + 0.9 * rand.float(f64));
-            if (c.sub(Vec3.init(4, 0.2, 0)).len() > 0.9) {
-                const lambFac = rand.float(f32);
-                const mirrorFac = rand.float(f32) * (1.0 - lambFac);
-                const dielectricFac = 1.0 - lambFac - mirrorFac;
-
-                try objects.append(object.asSphere(
-                    Sphere{ .center = c, .radius = 0.2 },
-                    .{
-                        .lambFac = lambFac,
-                        .lamb = .{ .albedo = vec3.random(rand) },
-                        .mirrorFac = mirrorFac,
-                        .mirror = .{ .albedo = vec3.random(rand), .fuzz = rand.float(f64) },
-                        .dielectricFac = dielectricFac,
-                        .dielectric = .{ .albedo = vec3.random(rand), .index = rand.float(f64) + 0.5 },
-                    },
-                    // TODO: random emitters?
-                    Vec3.zero(),
-                ));
-            }
-            b += 1;
-        }
-        a += 1;
-    }
-
-    try objects.append(object.asSphere(
-        Sphere{ .center = Vec3.init(0, 1, 0), .radius = 1.0 },
-        .{
-            .dielectricFac = 1.0,
-            .dielectric = .{ .index = 1.5 },
-        },
-        Vec3.zero(),
-    ));
-
-    try objects.append(object.asSphere(
-        Sphere{ .center = Vec3.init(-4, 1, 0), .radius = 1.0 },
-        .{
-            .lambFac = 1.0,
-            .lamb = .{ .albedo = Vec3.init(0.4, 0.2, 0.1) },
-        },
-        Vec3.zero(),
-    ));
-
-    try objects.append(object.asSphere(
-        Sphere{ .center = Vec3.init(4, 1, 0), .radius = 1.0 },
-        .{
-            .mirrorFac = 1.0,
-            .mirror = .{ .albedo = Vec3.init(0.7, 0.6, 0.5) },
-        },
-        Vec3.zero(),
-    ));
-
-    try objects.append(object.asXZRect(
-        XZRect{ .x0 = -4, .x1 = 4, .z0 = -4, .z1 = 4, .k = 3 },
-        .{},
-        Vec3.init(1, 1, 1),
-    ));
-
-    return Scene{
-        .camera = Camera.init(Vec3.init(13, 2, 3), Vec3.zero(), Vec3.init(0, 1, 0), 20.0, 0.2, 10.0),
-        .objects = objects,
-        .background = Vec3.init(0.1, 0.3, 0.5),
-    };
-}
-
-fn createTestInstance(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
-    var objects = std.ArrayList(Object).init(alloc);
-
-    const red: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.65, 0.05, 0.05) } };
-    const pink: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.65, 0.05, 0.65) } };
-    const white: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.73, 0.73, 0.73) } };
-    const green: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.12, 0.45, 0.15) } };
-    const blue: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.15, 0.12, 0.45) } };
-
-    const rect = try alloc.create(Object);
-    rect.* = object.asXYRect(.{
-        .x0 = 0.0,
-        .x1 = 6.0,
-        .y0 = 0.0,
-        .y1 = 6.0,
-        .k = 0.0,
-    }, white, Vec3.zero());
-    try objects.append(rect.*);
-
-    const translated_rect = try alloc.create(Object);
-    translated_rect.* = object.asTranslate(.{
-        .object = rect,
-        .offset = Vec3.init(10.0, 0.0, 0.0),
-    }, green, Vec3.zero());
-    try objects.append(translated_rect.*);
-
-    const rotated_trans = try alloc.create(Object);
-    rotated_trans.* = object.asRotateY(RotateY.init(translated_rect, 45.0), red, Vec3.zero());
-    try objects.append(rotated_trans.*);
-
-    const rotated_rect = try alloc.create(Object);
-    rotated_rect.* = object.asRotateY(RotateY.init(rect, -45.0), pink, Vec3.zero());
-    try objects.append(rotated_rect.*);
-
-    const translated_rot = try alloc.create(Object);
-    translated_rot.* = object.asTranslate(.{
-        .object = rotated_rect,
-        .offset = Vec3.init(0.0, 10.0, 0.0),
-    }, blue, Vec3.zero());
-    try objects.append(translated_rot.*);
-
-    const light = object.asXYRect(.{
-        .x0 = -20.0,
-        .x1 = 20.0,
-        .y0 = -20.0,
-        .y1 = 20.0,
-        .k = -60,
-    }, .{}, Vec3.init(1.0, 1.0, 1.0));
-    try objects.append(light);
-
-    return Scene{
-        .camera = Camera.basic(
-            Vec3.init(12.0, 5.0, -50),
-            Vec3.init(12.0, 5.0, 0),
-            40.0,
-            1.0,
-        ),
-        .objects = objects,
-        .background = Vec3.init(0.1, 0.1, 0.1),
-    };
-}
-
-fn createCornellBox(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
-    var objects = std.ArrayList(Object).init(alloc);
-
-    const red: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.65, 0.05, 0.05) } };
-    const white: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.73, 0.73, 0.73) } };
-    const green: Materials = .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.12, 0.45, 0.15) } };
-
-    try objects.append(object.asYZRect(.{
-        .y0 = 0.0,
-        .y1 = 555.0,
-        .z0 = 0.0,
-        .z1 = 555.0,
-        .k = 555.0,
-    }, green, Vec3.zero()));
-    try objects.append(object.asYZRect(.{
-        .y0 = 0.0,
-        .y1 = 555.0,
-        .z0 = 0.0,
-        .z1 = 555.0,
-        .k = 0.0,
-    }, red, Vec3.zero()));
-    try objects.append(object.asXZRect(.{
-        .x0 = 0.0,
-        .x1 = 555.0,
-        .z0 = 0.0,
-        .z1 = 555.0,
-        .k = 0.0,
-    }, white, Vec3.zero()));
-
-    try objects.append(object.asXZRect(.{
-        .x0 = 0.0,
-        .x1 = 555.0,
-        .z0 = 0.0,
-        .z1 = 555.0,
-        .k = 555.0,
-    }, white, Vec3.zero()));
-    try objects.append(object.asXYRect(.{
-        .x0 = 0.0,
-        .x1 = 555.0,
-        .y0 = 0.0,
-        .y1 = 555.0,
-        .k = 555.0,
-    }, white, Vec3.zero()));
-
-    // light
-    try objects.append(object.asXZRect(.{
-        .x0 = 213,
-        .x1 = 343,
-        .z0 = 227,
-        .z1 = 332,
-        .k = 554,
-    }, .{}, Vec3.init(15, 15, 15)));
-
-    // boxes
-    var right_box = try alloc.create(Object);
-    right_box.* = object.asBox(Box.init(Vec3.zero(), Vec3.init(165, 165, 165)), .{}, Vec3.zero());
-
-    var rotated_right_box = try alloc.create(Object);
-    rotated_right_box.* = object.asRotateY(RotateY.init(right_box, -18), white, Vec3.zero());
-
-    var translated_right_box = try alloc.create(Object);
-    translated_right_box.* = object.asTranslate(.{
-        .object = rotated_right_box,
-        .offset = Vec3.init(130, 0, 65),
-    }, white, Vec3.zero());
-    try objects.append(translated_right_box.*);
-
-    var left_box = try alloc.create(Object);
-    left_box.* = object.asBox(Box.init(Vec3.zero(), Vec3.init(165, 330, 165)), .{}, Vec3.zero());
-
-    var rotated_left_box = try alloc.create(Object);
-    rotated_left_box.* = object.asRotateY(RotateY.init(left_box, 15), .{}, Vec3.zero());
-
-    const translated_left_box = try alloc.create(Object);
-    translated_left_box.* = object.asTranslate(.{
-        .object = rotated_left_box,
-        .offset = Vec3.init(265, 0, 295),
-    }, white, Vec3.zero());
-
-    try objects.append(translated_left_box.*);
-
-    return Scene{
-        .camera = Camera.basic(
-            Vec3.init(278, 278, -800),
-            Vec3.init(278, 278, 0),
-            40.0,
-            1.2,
-        ),
-        .objects = objects,
-        .background = Vec3.zero(),
-    };
 }
 
 pub fn main() !void {
@@ -357,15 +85,15 @@ pub fn main() !void {
     var allocator = &arena.allocator;
 
     std.log.info("creating world", .{});
-    const scene = try createCornellBox(allocator, rand);
-    defer scene.objects.deinit();
+    const scn = try scene.createCornellBox(allocator, rand);
+    defer scn.objects.deinit();
 
-    std.log.info("{d} objects in the world", .{scene.objects.items.len});
+    std.log.info("{d} objects in the world", .{scn.objects.items.len});
 
     std.log.info("slicing up the world", .{});
-    const world = try BVHNode.init(allocator, scene.objects.items, rand);
+    const world = try BVHNode.init(allocator, scn.objects.items, rand);
 
-    const height = @floatToInt(usize, @intToFloat(f64, config.width) / scene.camera.aspect_ratio);
+    const height = @floatToInt(usize, @intToFloat(f64, config.width) / scn.camera.aspect_ratio);
     var pixels: [][]RGB = try allocator.alloc([]RGB, config.width);
     var pj: usize = 0;
     while (pj < height) {
@@ -380,19 +108,22 @@ pub fn main() !void {
 
     const startTime = std.time.milliTimestamp();
 
-    var maxColour: Vec3 = undefined;
-
     var j: usize = 0;
     while (j < height) {
         if (j % 10 == 0) {
-            std.log.info("rendering scanline {d} / {d}", .{ j, height });
             if (j > 0) {
                 const elapsed = @intToFloat(f32, std.time.milliTimestamp() - startTime);
                 const remain = @intToFloat(f32, height - j) * (elapsed / @intToFloat(f32, j));
                 if (remain > 60000) {
-                    std.log.info(".. {d:.3} minutes remaining", .{remain / (60 * 1000)});
+                    std.log.info(
+                        "rendering line {d} / {d}: {d:.2} minutes remaining",
+                        .{ j, height, remain / (60 * 1000) },
+                    );
                 } else {
-                    std.log.info(".. {d:.3} seconds remaining", .{remain / 1000});
+                    std.log.info(
+                        "rendering line {d} / {d}: {d:.2} seconds remaining",
+                        .{ j, height, remain / 1000 },
+                    );
                 }
             }
         }
@@ -403,9 +134,9 @@ pub fn main() !void {
             while (sample < config.samples) {
                 const u = (@intToFloat(f64, i) + rand.float(f64)) / @intToFloat(f64, config.width - 1);
                 const v = (@intToFloat(f64, j) + rand.float(f64)) / @intToFloat(f64, height - 1);
-                const r = scene.camera.createRay(rand, u, v);
+                const r = scn.camera.createRay(rand, u, v);
 
-                pixelColour = pixelColour.add(ray_color(rand, r, world, scene.background, 0));
+                pixelColour = pixelColour.add(rayColor(rand, r, world, scn.light, scn.background, 0));
                 sample += 1;
             }
             pixels[i][j] = RGB.fromVec3(pixelColour.mult(f64, 1.0 / @intToFloat(f64, config.samples)).pow(1.0 / 2.2));

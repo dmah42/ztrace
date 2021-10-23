@@ -141,6 +141,30 @@ pub fn random_in_unit_disc(_rand: *rand.Random) Vec3 {
     }
 }
 
+pub fn random_cosine_direction(_rand: *rand.Random) Vec3 {
+    const r1 = _rand.float(f64);
+    const r2 = _rand.float(f64);
+    const z = math.sqrt(1 - r2);
+
+    const phi = 2 * math.pi * r1;
+    const x = math.cos(phi) * math.sqrt(r2);
+    const y = math.sin(phi) * math.sqrt(r2);
+
+    return Vec3.init(x, y, z);
+}
+
+pub fn randomToSphere(_rand: *rand.Random, radius: f64, distance_squared: f64) Vec3 {
+    const r1 = _rand.float(f64);
+    const r2 = _rand.float(f64);
+    const z = 1.0 + r2 * (math.sqrt(1.0 - radius * radius / distance_squared) - 1.0);
+
+    const phi = 2 * math.pi * r1;
+    const x = math.cos(phi) * math.sqrt(1 - z * z);
+    const y = math.sin(phi) * math.sqrt(1 - z * z);
+
+    return Vec3.init(x, y, z);
+}
+
 pub fn minimum(a: Vec3, b: Vec3) Vec3 {
     return .{ .v = .{
         math.min(a.v[0], b.v[0]),

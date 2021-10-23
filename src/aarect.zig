@@ -1,3 +1,5 @@
+const math = @import("std").math;
+const rand = @import("std").rand;
 const AABB = @import("aabb.zig").AABB;
 const Hit = @import("hit.zig").Hit;
 const Materials = @import("materials.zig").Materials;
@@ -38,6 +40,27 @@ pub const XYRect = struct {
         h.set_normal(r, Vec3.init(0, 0, 1));
         return h;
     }
+
+    pub fn pdfValue(self: XYRect, origin: Vec3, v: Vec3) f64 {
+        const maybeHit = self.intersect(Ray.init(origin, v), 0.0001, math.inf(f64));
+
+        if (maybeHit) |hit| {
+            const area = (self.x1 - self.x0) * (self.y1 - self.y0);
+            const distSqr = hit.t * hit.t * v.lenSqr();
+            const cosine = math.fabs(v.dot(hit.n()) / v.len());
+            return distSqr / (cosine * area);
+        }
+        return 0.0;
+    }
+
+    pub fn random(self: XYRect, _rand: *rand.Random, origin: Vec3) Vec3 {
+        const randomPt = Vec3.init(
+            _rand.float(f64) * (self.x1 - self.x0) + self.x0,
+            _rand.float(f64) * (self.y1 - self.y0) + self.y0,
+            self.k,
+        );
+        return randomPt.sub(origin);
+    }
 };
 
 pub const XZRect = struct {
@@ -74,6 +97,27 @@ pub const XZRect = struct {
         h.set_normal(r, Vec3.init(0, 1, 0));
         return h;
     }
+
+    pub fn pdfValue(self: XZRect, origin: Vec3, v: Vec3) f64 {
+        const maybeHit = self.intersect(Ray.init(origin, v), 0.0001, math.inf(f64));
+
+        if (maybeHit) |hit| {
+            const area = (self.x1 - self.x0) * (self.z1 - self.z0);
+            const distSqr = hit.t * hit.t * v.lenSqr();
+            const cosine = math.fabs(v.dot(hit.n()) / v.len());
+            return distSqr / (cosine * area);
+        }
+        return 0.0;
+    }
+
+    pub fn random(self: XZRect, _rand: *rand.Random, origin: Vec3) Vec3 {
+        const randomPt = Vec3.init(
+            _rand.float(f64) * (self.x1 - self.x0) + self.x0,
+            self.k,
+            _rand.float(f64) * (self.z1 - self.z0) + self.z0,
+        );
+        return randomPt.sub(origin);
+    }
 };
 
 pub const YZRect = struct {
@@ -109,5 +153,26 @@ pub const YZRect = struct {
         };
         h.set_normal(r, Vec3.init(1, 0, 0));
         return h;
+    }
+
+    pub fn pdfValue(self: YZRect, origin: Vec3, v: Vec3) f64 {
+        const maybeHit = self.intersect(Ray.init(origin, v), 0.0001, math.inf(f64));
+
+        if (maybeHit) |hit| {
+            const area = (self.y1 - self.y0) * (self.z1 - self.z0);
+            const distSqr = hit.t * hit.t * v.lenSqr();
+            const cosine = math.fabs(v.dot(hit.n()) / v.len());
+            return distSqr / (cosine * area);
+        }
+        return 0.0;
+    }
+
+    pub fn random(self: YZRect, _rand: *rand.Random, origin: Vec3) Vec3 {
+        const randomPt = Vec3.init(
+            self.k,
+            _rand.float(f64) * (self.y1 - self.y0) + self.y0,
+            _rand.float(f64) * (self.z1 - self.z0) + self.z0,
+        );
+        return randomPt.sub(origin);
     }
 };

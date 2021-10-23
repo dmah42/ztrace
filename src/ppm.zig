@@ -1,5 +1,4 @@
 const std = @import("std");
-const rgb = @import("rgb.zig");
 
 pub fn write(writer: std.fs.File.Writer, pixels: anytype) !void {
     const width = pixels.len;

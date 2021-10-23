@@ -44,4 +44,23 @@ pub const Sphere = struct {
         h.set_normal(r, r.at(root).sub(self.center).mult(f64, 1.0 / self.radius));
         return h;
     }
+
+    pub fn pdfValue(self: Sphere, origin: Vec3, v: Vec3) f64 {
+        const maybeHit = self.intersect(Ray.init(origin, v), 0.0001, math.inf(f64));
+
+        if (maybeHit) |hit| {
+            const cos_theta_max = math.sqrt(1.0 - self.radius * self.radius / (self.center.sub(origin).lenSqr()));
+            const solid_angle = 2 * math.pi * (1.0 - cos_theta_max);
+
+            return 1.0 / solid_angle;
+        }
+        return 0.0;
+    }
+
+    pub fn random(self: Sphere, _rand: *rand.Random, origin: Vec3) Vec3 {
+        const direction = self.center.sub(origin);
+        const dist_sqr = direction.lenSqr();
+        const uvw = ONB.buildFromW(direction);
+        return uvw.local(random_to_sphere(self.radius, dist_sqr));
+    }
 };

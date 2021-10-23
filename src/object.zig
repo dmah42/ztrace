@@ -1,3 +1,5 @@
+const rand = @import("std").rand;
+
 const AABB = @import("aabb.zig").AABB;
 const Box = @import("box.zig").Box;
 const Hit = @import("hit.zig").Hit;
@@ -32,6 +34,7 @@ pub const Object = struct {
         yzrect: YZRect,
     };
 
+    name: [*:0]const u8,
     t: Type,
     materials: Materials,
     emittance: Vec3 = Vec3.zero(),
@@ -69,58 +72,83 @@ pub const Object = struct {
         }
         return null;
     }
+
+    pub fn pdfValue(self: Object, origin: Vec3, v: Vec3) f64 {
+        return switch (self.t) {
+            .xyrect => |*r| r.pdfValue(origin, v),
+            .xzrect => |*r| r.pdfValue(origin, v),
+            .yzrect => |*r| r.pdfValue(origin, v),
+            else => 0.0,
+        };
+    }
+
+    pub fn random(self: Object, _rand: *rand.Random, origin: Vec3) Vec3 {
+        return switch (self.t) {
+            .xyrect => |*r| r.random(_rand, origin),
+            .xzrect => |*r| r.random(_rand, origin),
+            .yzrect => |*r| r.random(_rand, origin),
+            else => Vec3.zero(),
+        };
+    }
 };
 
-pub fn asSphere(s: Sphere, m: Materials, e: Vec3) Object {
+pub fn asSphere(s: Sphere, name: [*:0]const u8, m: Materials, e: Vec3) Object {
     return Object{
+        .name = name,
         .t = .{ .sphere = s },
         .materials = m,
         .emittance = e,
     };
 }
 
-pub fn asXYRect(r: XYRect, m: Materials, e: Vec3) Object {
+pub fn asXYRect(r: XYRect, name: [*:0]const u8, m: Materials, e: Vec3) Object {
     return Object{
+        .name = name,
         .t = .{ .xyrect = r },
         .materials = m,
         .emittance = e,
     };
 }
 
-pub fn asXZRect(r: XZRect, m: Materials, e: Vec3) Object {
+pub fn asXZRect(r: XZRect, name: [*:0]const u8, m: Materials, e: Vec3) Object {
     return Object{
+        .name = name,
         .t = .{ .xzrect = r },
         .materials = m,
         .emittance = e,
     };
 }
 
-pub fn asYZRect(r: YZRect, m: Materials, e: Vec3) Object {
+pub fn asYZRect(r: YZRect, name: [*:0]const u8, m: Materials, e: Vec3) Object {
     return Object{
+        .name = name,
         .t = .{ .yzrect = r },
         .materials = m,
         .emittance = e,
     };
 }
 
-pub fn asBox(b: Box, m: Materials, e: Vec3) Object {
+pub fn asBox(b: Box, name: [*:0]const u8, m: Materials, e: Vec3) Object {
     return Object{
+        .name = name,
         .t = .{ .box = b },
         .materials = m,
         .emittance = e,
     };
 }
 
-pub fn asRotateY(r: RotateY, m: Materials, e: Vec3) Object {
+pub fn asRotateY(r: RotateY, name: [*:0]const u8, m: Materials, e: Vec3) Object {
     return Object{
+        .name = name,
         .t = .{ .rotate_y = r },
         .materials = m,
         .emittance = e,
     };
 }
 
-pub fn asTranslate(t: Translate, m: Materials, e: Vec3) Object {
+pub fn asTranslate(t: Translate, name: [*:0]const u8, m: Materials, e: Vec3) Object {
     return Object{
+        .name = name,
         .t = .{ .translate = t },
         .materials = m,
         .emittance = e,
