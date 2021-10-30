@@ -72,6 +72,26 @@ fn rayColor(rand: *std.rand.Random, r: Ray, world: *BVHNode, light: Object, back
 }
 
 pub fn main() !void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+
+    var output: []const u8 = "image.ppm";
+    var iter = std.process.args();
+    while (iter.next(allocator)) |arg| {
+        const argument = arg catch break;
+        if (std.mem.eql(u8, argument, "--output") or std.mem.eql(u8, argument, "-o")) {
+            if (iter.next(allocator)) |arg_value| {
+                output = arg_value catch break;
+            } else {
+                std.log.err("usage: ztrace [--output|-o] <output_file>", .{});
+                return;
+            }
+        }
+        allocator.free(argument);
+    }
+    std.log.info("outputting to '{s}'", .{output});
+
     const rand = &(std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.os.getrandom(std.mem.asBytes(&seed));
@@ -80,12 +100,8 @@ pub fn main() !void {
 
     std.log.info("using config {s}", .{config});
 
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    var allocator = &arena.allocator;
-
     std.log.info("creating world", .{});
-    const scn = try scene.createCornellBox(allocator, rand);
+    const scn = try scene.createBalls(allocator, rand);
     defer scn.objects.deinit();
 
     std.log.info("{d} objects in the world", .{scn.objects.items.len});
@@ -146,7 +162,10 @@ pub fn main() !void {
         j += 1;
     }
 
-    try ppm.write(std.io.getStdOut().writer(), pixels);
+    const file = try std.fs.cwd().createFile(output, .{});
+    defer file.close();
+
+    try ppm.write(file.writer(), pixels);
 
     std.log.info("all your pixels are belong to us.", .{});
 }
