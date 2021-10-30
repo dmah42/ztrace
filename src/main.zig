@@ -123,15 +123,15 @@ pub fn main() !void {
                 const elapsed = @intToFloat(f32, std.time.milliTimestamp() - startTime);
                 const remain = @intToFloat(f32, height - j) * (elapsed / @intToFloat(f32, j));
                 if (remain > 60000) {
-                    const mins = remain / (60 * 1000);
-                    const secs = remain - mins;
+                    const mins = std.math.floor(remain / (60 * 1000));
+                    const secs = (remain - (mins * 60 * 1000)) / 1000;
                     std.log.info(
-                        "rendering line {d} / {d}: {d:.0} minutes {d:.3} seconds remaining",
+                        "rendering line {d} / {d}: {d}m {d:.3}s remaining",
                         .{ j, height, mins, secs },
                     );
                 } else {
                     std.log.info(
-                        "rendering line {d} / {d}: {d:.3} seconds remaining",
+                        "rendering line {d} / {d}: {d:.3}s remaining",
                         .{ j, height, remain / 1000 },
                     );
                 }
