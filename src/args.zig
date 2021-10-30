@@ -36,6 +36,8 @@ pub const Args = struct {
             return .balls;
         } else if (std.mem.eql(u8, scn, "cornell")) {
             return .cornell;
+        } else if (std.mem.eql(u8, scn, "pyramid")) {
+            return .pyramid;
         }
         return UsageError.UnknownScene;
     }

@@ -15,6 +15,7 @@ pub const Scene = struct {
     pub const Type = enum {
         balls,
         cornell,
+        pyramid,
     };
 
     camera: Camera,
@@ -26,6 +27,7 @@ pub const Scene = struct {
         return switch (t) {
             .balls => try createBalls(alloc, rand),
             .cornell => try createCornellBox(alloc, rand),
+            .pyramid => try createPyramid(alloc, rand),
         };
     }
 
@@ -228,6 +230,114 @@ pub const Scene = struct {
             ),
             .objects = objects,
             .background = Vec3.zero(),
+            .light = light,
+        };
+    }
+
+    fn createPyramid(alloc: *std.mem.Allocator, rand: *std.rand.Random) !Scene {
+        var objects = std.ArrayList(Object).init(alloc);
+
+        const radius = 20.0;
+        const delta = 2 * radius / std.math.sqrt(2.0);
+
+        const glass: Materials =
+            .{
+            .dielectricFac = 1.0,
+            .dielectric = .{ .index = 1.5 },
+        };
+
+        try objects.append(object.asXZRect(
+            .{
+                .x0 = -1000,
+                .x1 = 1000,
+                .z0 = -1000,
+                .z1 = 1000,
+                .k = 0,
+            },
+            "ground",
+            .{ .lambFac = 1.0, .lamb = .{ .albedo = Vec3.init(0.01, 0.1, 0.05) } },
+            Vec3.zero(),
+        ));
+
+        var ball = try alloc.create(Object);
+        ball.* = object.asSphere(
+            .{
+                .center = Vec3.init(0.0, radius, 0.0),
+                .radius = radius,
+            },
+            "ball",
+            .{},
+            Vec3.zero(),
+        );
+
+        var front_ball = try alloc.create(Object);
+        front_ball.* = object.asTranslate(
+            .{
+                .object = ball,
+                .offset = Vec3.init(0, 0, -delta),
+            },
+            "front ball",
+            glass,
+            Vec3.zero(),
+        );
+        try objects.append(front_ball.*);
+
+        var left_ball = try alloc.create(Object);
+        left_ball.* = object.asTranslate(
+            .{
+                .object = ball,
+                .offset = Vec3.init(-delta, 0, 0),
+            },
+            "left ball",
+            glass,
+            Vec3.zero(),
+        );
+        try objects.append(left_ball.*);
+
+        var right_ball = try alloc.create(Object);
+        right_ball.* = object.asTranslate(
+            .{
+                .object = ball,
+                .offset = Vec3.init(delta, 0, 0),
+            },
+            "right ball",
+            glass,
+            Vec3.zero(),
+        );
+        try objects.append(right_ball.*);
+
+        var top_ball = try alloc.create(Object);
+        top_ball.* = object.asTranslate(
+            .{
+                .object = ball,
+                .offset = Vec3.init(0, delta, 0),
+            },
+            "top ball",
+            glass,
+            Vec3.zero(),
+        );
+        try objects.append(top_ball.*);
+
+        const light = object.asSphere(
+            .{
+                .center = Vec3.init(0, 200, -400),
+                .radius = 2,
+            },
+            "light",
+            .{},
+            Vec3.init(0.8, 0.8, 0.7),
+        );
+        try objects.append(light);
+
+        return Scene{
+            .camera = Camera.basic(
+                Vec3.init(0, 60, -150),
+                Vec3.init(0, radius, 0),
+                40.0,
+                4.0 / 3.0,
+            ),
+            .objects = objects,
+            .background = Vec3.init(0.0, 0.1, 0.2),
             .light = light,
         };
     }
