@@ -113,6 +113,7 @@ pub fn main() !void {
     std.log.info("ready to throw some pixels!", .{});
 
     const startTime = std.time.milliTimestamp();
+    const samples = args.config.samples();
 
     var j: usize = 0;
     while (j < height) {
@@ -134,7 +135,6 @@ pub fn main() !void {
             }
         }
 
-        const samples = args.config.samples();
         var i: usize = 0;
         while (i < width) {
             var sample: usize = 0;
