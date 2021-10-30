@@ -114,6 +114,7 @@ pub fn main() !void {
 
     const startTime = std.time.milliTimestamp();
     const samples = args.config.samples();
+    const invSamples = 1.0 / @intToFloat(f64, samples);
 
     var j: usize = 0;
     while (j < height) {
@@ -122,13 +123,15 @@ pub fn main() !void {
                 const elapsed = @intToFloat(f32, std.time.milliTimestamp() - startTime);
                 const remain = @intToFloat(f32, height - j) * (elapsed / @intToFloat(f32, j));
                 if (remain > 60000) {
+                    const mins = remain / (60 * 1000);
+                    const secs = remain - mins;
                     std.log.info(
-                        "rendering line {d} / {d}: {d:.2} minutes remaining",
-                        .{ j, height, remain / (60 * 1000) },
+                        "rendering line {d} / {d}: {d:.0} minutes {d:.3} seconds remaining",
+                        .{ j, height, mins, secs },
                     );
                 } else {
                     std.log.info(
-                        "rendering line {d} / {d}: {d:.2} seconds remaining",
+                        "rendering line {d} / {d}: {d:.3} seconds remaining",
                         .{ j, height, remain / 1000 },
                     );
                 }
@@ -147,7 +150,7 @@ pub fn main() !void {
                 pixelColour = pixelColour.add(rayColor(rand, r, world, scn.light, scn.background, 0, args.config.maxDepth()));
                 sample += 1;
             }
-            pixels[i][j] = RGB.fromVec3(pixelColour.mult(f64, 1.0 / @intToFloat(f64, samples)).pow(1.0 / 2.2));
+            pixels[i][j] = RGB.fromVec3(pixelColour.mult(f64, invSamples).clamp(0.0, 1.0).pow(1.0 / 2.2));
 
             i += 1;
         }
