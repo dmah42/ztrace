@@ -71,25 +71,42 @@ fn rayColor(rand: *std.rand.Random, r: Ray, world: *BVHNode, light: Object, back
     return background;
 }
 
+const UsageError = error{
+    UndefinedOutput,
+    UnknownArg,
+};
+
+fn output_file(alloc: *std.mem.Allocator) ![]const u8 {
+    var output: []const u8 = "image.ppm";
+    var iter = std.process.args();
+    // skip the executable name.
+    if (iter.next(alloc)) |exe_name| {}
+    while (iter.next(alloc)) |arg| {
+        const argument = try arg;
+        defer alloc.free(argument);
+        if (std.mem.eql(u8, argument, "--output") or std.mem.eql(u8, argument, "-o")) {
+            if (iter.next(alloc)) |arg_value| {
+                output = try arg_value;
+            } else {
+                return UsageError.UndefinedOutput;
+            }
+        } else {
+            std.log.info("unknown arg '{s}'", .{argument});
+            return UsageError.UnknownArg;
+        }
+    }
+    return output;
+}
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     var allocator = &arena.allocator;
 
-    var output: []const u8 = "image.ppm";
-    var iter = std.process.args();
-    while (iter.next(allocator)) |arg| {
-        const argument = arg catch break;
-        if (std.mem.eql(u8, argument, "--output") or std.mem.eql(u8, argument, "-o")) {
-            if (iter.next(allocator)) |arg_value| {
-                output = arg_value catch break;
-            } else {
-                std.log.err("usage: ztrace [--output|-o] <output_file>", .{});
-                return;
-            }
-        }
-        allocator.free(argument);
-    }
+    const output = output_file(allocator) catch {
+        std.log.err("usage: ztrace [--output|-o] <output_file>", .{});
+        return;
+    };
     std.log.info("outputting to '{s}'", .{output});
 
     const rand = &(std.rand.DefaultPrng.init(blk: {
