@@ -72,15 +72,21 @@ fn rayColor(rand: *std.rand.Random, r: Ray, world: *BVHNode, light: Object, back
 }
 
 const UsageError = error{
+    MissingExeName,
     UndefinedOutput,
     UnknownArg,
 };
 
-fn output_file(alloc: *std.mem.Allocator) ![]const u8 {
+const Args = struct {
+    exe_name: []const u8,
+    output: []const u8,
+};
+
+fn parse_args(alloc: *std.mem.Allocator) !Args {
     var output: []const u8 = "image.ppm";
     var iter = std.process.args();
-    // skip the executable name.
-    if (iter.next(alloc)) |exe_name| {}
+
+    const exe_name: []const u8 = if (iter.next(alloc)) |exe_name| try exe_name else return UsageError.MissingExeName;
     while (iter.next(alloc)) |arg| {
         const argument = try arg;
         defer alloc.free(argument);
@@ -91,11 +97,13 @@ fn output_file(alloc: *std.mem.Allocator) ![]const u8 {
                 return UsageError.UndefinedOutput;
             }
         } else {
-            std.log.info("unknown arg '{s}'", .{argument});
             return UsageError.UnknownArg;
         }
     }
-    return output;
+    return Args{
+        .exe_name = exe_name,
+        .output = output,
+    };
 }
 
 pub fn main() !void {
@@ -103,11 +111,12 @@ pub fn main() !void {
     defer arena.deinit();
     var allocator = &arena.allocator;
 
-    const output = output_file(allocator) catch {
+    const args: Args = parse_args(allocator) catch {
         std.log.err("usage: ztrace [--output|-o] <output_file>", .{});
         return;
     };
-    std.log.info("outputting to '{s}'", .{output});
+    std.log.info("running '{s}'", .{args.exe_name});
+    std.log.info("outputting to '{s}'", .{args.output});
 
     const rand = &(std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
@@ -179,7 +188,7 @@ pub fn main() !void {
         j += 1;
     }
 
-    const file = try std.fs.cwd().createFile(output, .{});
+    const file = try std.fs.cwd().createFile(args.output, .{});
     defer file.close();
 
     try ppm.write(file.writer(), pixels);
