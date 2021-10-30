@@ -2,7 +2,6 @@ const std = @import("std");
 const cam = @import("camera.zig");
 const object = @import("object.zig");
 const ppm = @import("ppm.zig");
-const scene = @import("scene.zig");
 const vec3 = @import("vec3.zig");
 
 const Args = @import("args.zig").Args;
@@ -10,6 +9,7 @@ const BVHNode = @import("bvhnode.zig").BVHNode;
 const PDF = @import("pdf.zig").PDF;
 const Ray = @import("ray.zig").Ray;
 const RGB = @import("rgb.zig").RGB;
+const Scene = @import("scene.zig").Scene;
 
 const Object = object.Object;
 const Vec3 = vec3.Vec3;
@@ -89,8 +89,8 @@ pub fn main() !void {
 
     std.log.info("using config {s}", .{args.config});
 
-    std.log.info("creating world", .{});
-    const scn = try scene.createBalls(allocator, rand);
+    std.log.info("creating scene {s}", .{args.scene});
+    const scn = try Scene.create(args.scene, allocator, rand);
     defer scn.objects.deinit();
 
     std.log.info("{d} objects in the world", .{scn.objects.items.len});
