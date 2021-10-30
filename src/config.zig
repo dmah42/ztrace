@@ -1,37 +1,33 @@
-const Config = struct {
-    samples: usize,
-    width: usize,
-    max_depth: u32,
+pub const Config = enum {
+    tst,
+    low,
+    hi,
+    xhi,
+
+    pub fn samples(self: Config) usize {
+        return switch (self) {
+            .tst => 10,
+            .low => 100,
+            .hi => 500,
+            .xhi => 1000,
+        };
+    }
+
+    pub fn width(self: Config) usize {
+        return switch (self) {
+            .tst => 400,
+            .low => 800,
+            .hi => 1024,
+            .xhi => 1280,
+        };
+    }
+
+    pub fn maxDepth(self: Config) usize {
+        return switch (self) {
+            .tst => 2,
+            .low => 5,
+            .hi => 10,
+            .xhi => 20,
+        };
+    }
 };
-
-pub fn xhi_res() Config {
-    return .{
-        .samples = 1000,
-        .width = 1280,
-        .max_depth = 20,
-    };
-}
-
-pub fn hi_res() Config {
-    return .{
-        .samples = 500,
-        .width = 1024,
-        .max_depth = 10,
-    };
-}
-
-pub fn lo_res() Config {
-    return .{
-        .samples = 100,
-        .width = 800,
-        .max_depth = 5,
-    };
-}
-
-pub fn test_render() Config {
-    return .{
-        .samples = 10,
-        .width = 400,
-        .max_depth = 2,
-    };
-}

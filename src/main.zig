@@ -1,6 +1,5 @@
 const std = @import("std");
 const cam = @import("camera.zig");
-const cfg = @import("config.zig");
 const object = @import("object.zig");
 const ppm = @import("ppm.zig");
 const scene = @import("scene.zig");
@@ -17,14 +16,12 @@ const Vec3 = vec3.Vec3;
 
 pub const log_level: std.log.Level = .info;
 
-const config = cfg.lo_res();
-
 fn lerp(a: Vec3, b: Vec3, t: f64) Vec3 {
     return a.mult(f64, 1.0 - t).add(b.mult(f64, t));
 }
 
-fn rayColor(rand: *std.rand.Random, r: Ray, world: *BVHNode, light: Object, background: Vec3, depth: u32) Vec3 {
-    if (depth >= config.max_depth) {
+fn rayColor(rand: *std.rand.Random, r: Ray, world: *BVHNode, light: Object, background: Vec3, depth: u32, max_depth: usize) Vec3 {
+    if (depth >= max_depth) {
         return Vec3.zero();
     }
 
@@ -39,7 +36,7 @@ fn rayColor(rand: *std.rand.Random, r: Ray, world: *BVHNode, light: Object, back
         if (scattered) |s| {
             std.log.debug(".. scattering", .{});
             if (s.isSpecular()) {
-                const color = rayColor(rand, s.ray_or_pdf.specular_ray, world, light, background, depth + 1).mult(Vec3, s.attenuation);
+                const color = rayColor(rand, s.ray_or_pdf.specular_ray, world, light, background, depth + 1, max_depth).mult(Vec3, s.attenuation);
                 std.log.debug(".. specular. returning {s}", .{color});
                 return color;
             }
@@ -52,7 +49,7 @@ fn rayColor(rand: *std.rand.Random, r: Ray, world: *BVHNode, light: Object, back
 
             std.log.debug(".. scattering to {s} with pdf {d:.2}", .{ scattered_ray, pdf_val });
 
-            const scattered_color = rayColor(rand, scattered_ray, world, light, background, depth + 1);
+            const scattered_color = rayColor(rand, scattered_ray, world, light, background, depth + 1, max_depth);
 
             const scattered_pdf = h.o.materials.scatteredPdf(rand, r, h, scattered_ray) catch |err| {
                 return 0.0;
@@ -72,19 +69,13 @@ fn rayColor(rand: *std.rand.Random, r: Ray, world: *BVHNode, light: Object, back
     return background;
 }
 
-const UsageError = error{
-    MissingExeName,
-    UndefinedOutput,
-    UnknownArg,
-};
-
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     var allocator = &arena.allocator;
 
     const args = Args.parse(allocator) catch {
-        std.log.err("usage: ztrace [--output|-o] <output_file>", .{});
+        std.log.err("usage: ztrace {s}", .{Args.usage()});
         return;
     };
     std.log.info("running '{s}'", .{args.exe_name});
@@ -96,7 +87,7 @@ pub fn main() !void {
         break :blk seed;
     }).random);
 
-    std.log.info("using config {s}", .{config});
+    std.log.info("using config {s}", .{args.config});
 
     std.log.info("creating world", .{});
     const scn = try scene.createBalls(allocator, rand);
@@ -107,12 +98,13 @@ pub fn main() !void {
     std.log.info("slicing up the world", .{});
     const world = try BVHNode.init(allocator, scn.objects.items, rand);
 
-    const height = @floatToInt(usize, @intToFloat(f64, config.width) / scn.camera.aspect_ratio);
-    var pixels: [][]RGB = try allocator.alloc([]RGB, config.width);
+    const width = args.config.width();
+    const height = @floatToInt(usize, @intToFloat(f64, width) / scn.camera.aspect_ratio);
+    var pixels: [][]RGB = try allocator.alloc([]RGB, width);
     var pj: usize = 0;
     while (pj < height) {
         var pi: usize = 0;
-        while (pi < config.width) {
+        while (pi < width) {
             pixels[pi] = try allocator.alloc(RGB, height);
             pi += 1;
         }
@@ -141,19 +133,21 @@ pub fn main() !void {
                 }
             }
         }
+
+        const samples = args.config.samples();
         var i: usize = 0;
-        while (i < config.width) {
+        while (i < width) {
             var sample: usize = 0;
             var pixelColour = Vec3.zero();
-            while (sample < config.samples) {
-                const u = (@intToFloat(f64, i) + rand.float(f64)) / @intToFloat(f64, config.width - 1);
+            while (sample < samples) {
+                const u = (@intToFloat(f64, i) + rand.float(f64)) / @intToFloat(f64, width - 1);
                 const v = (@intToFloat(f64, j) + rand.float(f64)) / @intToFloat(f64, height - 1);
                 const r = scn.camera.createRay(rand, u, v);
 
-                pixelColour = pixelColour.add(rayColor(rand, r, world, scn.light, scn.background, 0));
+                pixelColour = pixelColour.add(rayColor(rand, r, world, scn.light, scn.background, 0, args.config.maxDepth()));
                 sample += 1;
             }
-            pixels[i][j] = RGB.fromVec3(pixelColour.mult(f64, 1.0 / @intToFloat(f64, config.samples)).pow(1.0 / 2.2));
+            pixels[i][j] = RGB.fromVec3(pixelColour.mult(f64, 1.0 / @intToFloat(f64, samples)).pow(1.0 / 2.2));
 
             i += 1;
         }
