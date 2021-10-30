@@ -6,6 +6,7 @@ const ppm = @import("ppm.zig");
 const scene = @import("scene.zig");
 const vec3 = @import("vec3.zig");
 
+const Args = @import("args.zig").Args;
 const BVHNode = @import("bvhnode.zig").BVHNode;
 const PDF = @import("pdf.zig").PDF;
 const Ray = @import("ray.zig").Ray;
@@ -77,41 +78,12 @@ const UsageError = error{
     UnknownArg,
 };
 
-const Args = struct {
-    exe_name: []const u8,
-    output: []const u8,
-};
-
-fn parse_args(alloc: *std.mem.Allocator) !Args {
-    var output: []const u8 = "image.ppm";
-    var iter = std.process.args();
-
-    const exe_name: []const u8 = if (iter.next(alloc)) |exe_name| try exe_name else return UsageError.MissingExeName;
-    while (iter.next(alloc)) |arg| {
-        const argument = try arg;
-        defer alloc.free(argument);
-        if (std.mem.eql(u8, argument, "--output") or std.mem.eql(u8, argument, "-o")) {
-            if (iter.next(alloc)) |arg_value| {
-                output = try arg_value;
-            } else {
-                return UsageError.UndefinedOutput;
-            }
-        } else {
-            return UsageError.UnknownArg;
-        }
-    }
-    return Args{
-        .exe_name = exe_name,
-        .output = output,
-    };
-}
-
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     var allocator = &arena.allocator;
 
-    const args: Args = parse_args(allocator) catch {
+    const args = Args.parse(allocator) catch {
         std.log.err("usage: ztrace [--output|-o] <output_file>", .{});
         return;
     };
